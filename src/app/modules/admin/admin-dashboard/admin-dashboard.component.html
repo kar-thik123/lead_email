@@ -1,0 +1,180 @@
+<app-layout>
+  <div class="admin-dashboard fade-in">
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <h2 class="section-title">
+          <i class="bi bi-speedometer2"></i>
+          Admin Dashboard
+        </h2>
+        <p class="section-description">
+          Monitor system activity and manage users
+        </p>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <a [routerLink]="['/admin/users']" class="btn btn-primary me-2">
+          <i class="bi bi-person-plus"></i> Add User
+        </a>
+        <a [routerLink]="['/admin/logs']" class="btn btn-info">
+          <i class="bi bi-journal-text"></i> View All Logs
+        </a>
+      </div>
+    </div>
+    
+    <!-- Admin Dashboard Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="card admin-stat-card">
+          <div class="card-body">
+            <div class="admin-stat-icon">
+              <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="admin-stat-info">
+              <h5 class="admin-stat-value">{{ activeUsers + inactiveUsers }}</h5>
+              <span class="admin-stat-label">Total Users</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="card admin-stat-card">
+          <div class="card-body">
+            <div class="admin-stat-icon admin-stat-icon-active">
+              <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div class="admin-stat-info">
+              <h5 class="admin-stat-value">{{ activeUsers }}</h5>
+              <span class="admin-stat-label">Active Users</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="card admin-stat-card">
+          <div class="card-body">
+            <div class="admin-stat-icon admin-stat-icon-inactive">
+              <i class="bi bi-person-dash-fill"></i>
+            </div>
+            <div class="admin-stat-info">
+              <h5 class="admin-stat-value">{{ inactiveUsers }}</h5>
+              <span class="admin-stat-label">Inactive Users</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="card admin-stat-card">
+          <div class="card-body">
+            <div class="admin-stat-icon admin-stat-icon-logs">
+              <i class="bi bi-activity"></i>
+            </div>
+            <div class="admin-stat-info">
+              <h5 class="admin-stat-value">{{ totalLogs }}</h5>
+              <span class="admin-stat-label">System Logs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <!-- Recent Users -->
+      <div class="col-lg-6 mb-4 mb-lg-0">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-people"></i> Recent Users</h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let user of recentUsers">
+                    <td>
+                      <strong>{{ user.username }}</strong>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                      <span class="badge rounded-pill" 
+                            [ngClass]="user.role === 'admin' ? 'bg-danger' : 'bg-info'">
+                        {{ user.role }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge rounded-pill" 
+                            [ngClass]="user.status === 'active' ? 'bg-success' : 'bg-secondary'">
+                        {{ user.status }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer text-end">
+            <a [routerLink]="['/admin/users']" class="btn btn-sm btn-primary">
+              View All Users <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Recent Activity Logs -->
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-journal-text"></i> Recent Activity</h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table mb-0">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let log of recentLogs">
+                    <td>{{ log.username }}</td>
+                    <td>
+                      <span class="badge rounded-pill"
+                            [ngClass]="getActionClass(log.action)">
+                        {{ log.action }}
+                      </span>
+                    </td>
+                    <td>{{ log.entity }}</td>
+                    <td>{{ formatDate(log.created_at) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer text-end">
+            <a [routerLink]="['/admin/logs']" class="btn btn-sm btn-primary">
+              View All Logs <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Loading indicator -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+</app-layout>

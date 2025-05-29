@@ -1,0 +1,25 @@
+.dashboard {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+
+.metric-card {
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.metric-icon {
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover .metric-icon {
+  transform: scale(1.2);
+}

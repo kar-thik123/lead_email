@@ -1,0 +1,66 @@
+.logs-management {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  color: var(--gray-300);
+  margin-bottom: 20px;
+}
+
+.empty-state p {
+  color: var(--gray-600);
+  font-size: 1.1rem;
+}
+
+.modal-sm {
+  max-width: 400px;
+}
+
+/* Fix pagination for Angular */
+.pagination {
+  display: flex;
+  padding-left: 0;
+  list-style: none;
+}
+
+.page-item:first-child .page-link {
+  border-top-left-radius: 0.25rem;
+  border-bottom-left-radius: 0.25rem;
+}
+
+.page-item:last-child .page-link {
+  border-top-right-radius: 0.25rem;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.page-item.active .page-link {
+  z-index: 3;
+  color: #fff;
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.page-item.disabled .page-link {
+  color: var(--gray-500);
+  pointer-events: none;
+  background-color: #fff;
+  border-color: var(--gray-300);
+}
+
+.page-link {
+  position: relative;
+  display: block;
+  color: var(--primary);
+  text-decoration: none;
+  background-color: #fff;
+  border: 1px solid var(--gray-300);
+  padding: 0.5rem 0.75rem;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  cursor: pointer;
+}

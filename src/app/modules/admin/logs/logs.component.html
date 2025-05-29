@@ -1,0 +1,209 @@
+<app-layout>
+  <div class="logs-management fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="section-title">
+          <i class="bi bi-journal-text"></i>
+          System Logs
+        </h2>
+        <p class="section-description">
+          View and manage system activity logs
+        </p>
+      </div>
+      <div>
+        <button class="btn btn-danger me-2" (click)="openClearConfirm()">
+          <i class="bi bi-trash"></i> Clear All Logs
+        </button>
+        <div class="btn-group">
+          <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-download"></i> Export
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" (click)="exportLogs('csv')"><i class="bi bi-filetype-csv me-2"></i>CSV</a></li>
+            <li><a class="dropdown-item" (click)="exportLogs('excel')"><i class="bi bi-file-earmark-excel me-2"></i>Excel</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Filter Card -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3"><i class="bi bi-funnel"></i> Filters</h5>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <label>User</label>
+            <select class="form-select" [(ngModel)]="filterOptions.user_id">
+              <option value="">All Users</option>
+              <option *ngFor="let user of users" [value]="user.id">{{ user.username }}</option>
+            </select>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label>Action</label>
+            <select class="form-select" [(ngModel)]="filterOptions.action">
+              <option value="">All Actions</option>
+              <option *ngFor="let action of actionTypes" [value]="action">{{ action }}</option>
+            </select>
+          </div>
+          <div class="col-md-2 mb-3">
+            <label>Entity</label>
+            <select class="form-select" [(ngModel)]="filterOptions.entity">
+              <option value="">All Entities</option>
+              <option *ngFor="let entity of entityTypes" [value]="entity">{{ entity }}</option>
+            </select>
+          </div>
+          <div class="col-md-2 mb-3">
+            <label>Start Date</label>
+            <input 
+              type="date" 
+              class="form-control" 
+              [(ngModel)]="filterOptions.startDate"
+            >
+          </div>
+          <div class="col-md-2 mb-3">
+            <label>End Date</label>
+            <input 
+              type="date" 
+              class="form-control" 
+              [(ngModel)]="filterOptions.endDate"
+            >
+          </div>
+        </div>
+        <div class="d-flex justify-content-end">
+          <button class="btn btn-secondary me-2" (click)="resetFilters()">
+            <i class="bi bi-x-circle"></i> Reset
+          </button>
+          <button class="btn btn-primary" (click)="applyFilters()">
+            <i class="bi bi-search"></i> Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Logs Table -->
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-primary text-white">
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Entity ID</th>
+                <th>IP Address</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of filteredLogs" class="fade-in">
+                <td>{{ formatDate(log.created_at) }}</td>
+                <td>{{ log.username }}</td>
+                <td>
+                  <span class="badge rounded-pill" [ngClass]="getActionClass(log.action)">
+                    {{ log.action }}
+                  </span>
+                </td>
+                <td>{{ log.entity }}</td>
+                <td>{{ log.entity_id || '-' }}</td>
+                <td>{{ log.ip_address || '-' }}</td>
+                <td>{{ log.details || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Empty State -->
+        <div *ngIf="filteredLogs.length === 0 && !isLoading" class="text-center py-5">
+          <div class="empty-state">
+            <i class="bi bi-journal-x"></i>
+            <p>No logs found matching the selected filters</p>
+            <button class="btn btn-primary mt-3" (click)="resetFilters()">
+              <i class="bi bi-arrow-repeat"></i> Reset Filters
+            </button>
+          </div>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+          <div>
+            Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, totalLogs) }} of {{ totalLogs }} logs
+          </div>
+          <div>
+            <nav aria-label="Log navigation">
+              <ul class="pagination mb-0">
+                <li class="page-item" [class.disabled]="currentPage === 1">
+                  <button class="page-link" (click)="goToPage(1)" aria-label="First">
+                    <i class="bi bi-chevron-double-left"></i>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="currentPage === 1">
+                  <button class="page-link" (click)="goToPage(currentPage - 1)" aria-label="Previous">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                </li>
+                
+                <li class="page-item">
+                  <span class="page-link">Page {{ currentPage }} of {{ Math.ceil(totalLogs / pageSize) }}</span>
+                </li>
+                
+                <li class="page-item" [class.disabled]="currentPage === Math.ceil(totalLogs / pageSize)">
+                  <button class="page-link" (click)="goToPage(currentPage + 1)" aria-label="Next">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="currentPage === Math.ceil(totalLogs / pageSize)">
+                  <button class="page-link" (click)="goToPage(Math.ceil(totalLogs / pageSize))" aria-label="Last">
+                    <i class="bi bi-chevron-double-right"></i>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Clear Logs Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showClearConfirm" (click)="closeClearConfirm()">
+    <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Confirm Clear Logs</h5>
+        <button type="button" class="btn-close" (click)="closeClearConfirm()"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to clear all system logs?</p>
+        <p class="text-danger"><small>This action cannot be undone.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeClearConfirm()">Cancel</button>
+        <button 
+          type="button" 
+          class="btn btn-danger" 
+          [disabled]="isLoading"
+          (click)="clearLogs()"
+        >
+          <i class="bi bi-trash"></i> {{ isLoading ? 'Clearing...' : 'Clear All Logs' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Loading indicator -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+  
+  <!-- Alert Component -->
+  <app-alert
+    *ngIf="showAlert"
+    [message]="alertMessage"
+    [type]="alertType"
+    [dismissible]="true"
+    (dismiss)="showAlert = false">
+  </app-alert>
+</app-layout>

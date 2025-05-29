@@ -1,0 +1,149 @@
+<app-layout>
+  <div class="dashboard fade-in">
+    <div class="row mb-4">
+      <div class="col-md-6 col-xl-3 mb-4 mb-xl-0">
+        <div class="card metric-card">
+          <div class="metric-icon">
+            <i class="bi bi-people-fill"></i>
+          </div>
+          <div class="metric-value">{{ leadStats?.total || 0 }}</div>
+          <div class="metric-label">Total Leads</div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-xl-3 mb-4 mb-xl-0">
+        <div class="card metric-card">
+          <div class="metric-icon">
+            <i class="bi bi-person-plus-fill"></i>
+          </div>
+          <div class="metric-value">{{ leadStats?.newLeads || 0 }}</div>
+          <div class="metric-label">New Leads (30 days)</div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-xl-3 mb-4 mb-md-0">
+        <div class="card metric-card">
+          <div class="metric-icon">
+            <i class="bi bi-telephone-outbound-fill"></i>
+          </div>
+          <div class="metric-value">{{ leadStats?.followedUp || 0 }}</div>
+          <div class="metric-label">Followed Up</div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-xl-3">
+        <div class="card metric-card">
+          <div class="metric-icon">
+            <i class="bi bi-check-circle-fill"></i>
+          </div>
+          <div class="metric-value">{{ leadStats?.converted || 0 }}</div>
+          <div class="metric-label">Converted</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row mb-4">
+      <div class="col-md-8 mb-4 mb-md-0">
+        <div class="card dashboard-card h-100">
+          <div class="dashboard-card-header">
+            <h5 class="mb-0"><i class="bi bi-graph-up"></i> Activity Trends</h5>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart 
+                [type]="lineChartType"
+                [data]="dailyActivityChartData"
+                [options]="lineChartOptions">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card dashboard-card h-100">
+          <div class="dashboard-card-header">
+            <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Leads by Status</h5>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart 
+                [type]="doughnutChartType"
+                [data]="leadsByStatusChartData"
+                [options]="chartOptions">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col-md-6 mb-4 mb-md-0">
+        <div class="card dashboard-card h-100">
+          <div class="dashboard-card-header">
+            <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Leads by Source</h5>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart 
+                [type]="doughnutChartType"
+                [data]="leadsBySourceChartData"
+                [options]="chartOptions">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6">
+        <div class="card dashboard-card h-100">
+          <div class="dashboard-card-header">
+            <h5 class="mb-0"><i class="bi bi-globe"></i> Leads by Country</h5>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart 
+                [type]="doughnutChartType"
+                [data]="leadsByCountryChartData"
+                [options]="chartOptions">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-lightning-charge"></i> Quick Actions</h5>
+            <div class="d-flex flex-wrap gap-2">
+              <a [routerLink]="['/leads']" class="btn btn-primary">
+                <i class="bi bi-table"></i> View All Leads
+              </a>
+              <a [routerLink]="['/leads']" [queryParams]="{filter: 'new'}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Add New Lead
+              </a>
+              <button class="btn btn-info">
+                <i class="bi bi-file-earmark-arrow-down"></i> Generate Report
+              </button>
+              <button *ngIf="leadStats?.total! > 10" class="btn btn-warning">
+                <i class="bi bi-funnel"></i> Find Duplicates
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Loading indicator -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+</app-layout>

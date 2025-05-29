@@ -1,0 +1,44 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo i, .logo-icon i {
+  font-size: 1.8rem;
+  color: var(--secondary);
+  margin-right: 5px;
+}
+
+.logo-icon {
+  font-size: 1.8rem;
+  text-align: center;
+}
+
+/* Additional styles specifically for the layout component */
+.dropdown-divider {
+  height: 1px;
+  margin: 0.5rem 0;
+  overflow: hidden;
+  background-color: var(--gray-300);
+}
+
+.user-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.user-dropdown-toggle:hover {
+  background-color: var(--gray-200);
+}
