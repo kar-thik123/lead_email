@@ -40,14 +40,6 @@ export class DashboardComponent implements OnInit {
     labels: []
   };
   
-  leadsByCountryChartData: ChartConfiguration['data'] = {
-    datasets: [{
-      data: [],
-      backgroundColor: [],
-    }],
-    labels: []
-  };
-  
   dailyActivityChartData: ChartConfiguration['data'] = {
     datasets: [
       {
@@ -168,15 +160,6 @@ export class DashboardComponent implements OnInit {
         backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
       }],
       labels: Object.keys(stats.byStatus || {})
-    };
-
-    // Update leads by country chart
-    this.leadsByCountryChartData = {
-      datasets: [{
-        data: Object.values(stats.byCountry || {}),
-        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
-      }],
-      labels: Object.keys(stats.byCountry || {})
     };
   }
 

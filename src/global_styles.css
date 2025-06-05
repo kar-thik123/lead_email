@@ -128,6 +128,7 @@ body {
   transition: all 0.3s ease;
   border: none;
   margin-bottom: 1.5rem;
+
 }
 
 .card:hover {
@@ -153,12 +154,13 @@ table {
   background-color: var(--primary);
   color: white;
   font-weight: 500;
-  padding: 12px;
+  padding: 20px;
 }
 
 .table td {
-  padding: 12px;
+  padding: 20px;
   vertical-align: middle;
+  border: 2px solid var(--gray-300);
 }
 
 .table tr:hover {
@@ -255,6 +257,7 @@ label {
   padding: 15px;
   background-color: var(--gray-100);
   border-radius: 4px;
+  
 }
 
 .detail-input {
@@ -389,6 +392,7 @@ label {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 4vh;
 }
 
 .toggle-sidebar-btn {
@@ -493,6 +497,7 @@ label {
   padding: 8px 15px;
   border-radius: 20px;
   margin-bottom: 15px;
+  font-size: large;
 }
 
 .total-rows-display .icon {

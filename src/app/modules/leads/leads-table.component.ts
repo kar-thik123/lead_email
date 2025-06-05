@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeadService } from '../../services/lead.service';
@@ -58,6 +58,12 @@ export class LeadsTableComponent implements OnInit {
   activeFilterColumn: string | null = null;
   duplicateCount = 0;
 
+  statusOptions = [
+    { value: 'New', label: 'New' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Closed', label: 'Closed' }
+  ];
+
   columns = [
     { key: 'source', label: 'Source', icon: 'bi bi-database', editable: true, type: 'text' },
     { key: 'first_name', label: 'First Name', icon: 'bi bi-person', editable: true, type: 'text' },
@@ -65,10 +71,9 @@ export class LeadsTableComponent implements OnInit {
     { key: 'phone_no_1', label: 'Phone No', icon: 'bi bi-telephone', editable: true, type: 'text' },
     { key: 'email_id_1', label: 'Email', icon: 'bi bi-envelope', editable: true, type: 'text' },
     { key: 'website', label: 'Website', icon: 'bi bi-globe', editable: true, type: 'link' },
-    { key: 'status', label: 'Status', icon: 'bi bi-info-circle', editable: true, type: 'text' },
+    { key: 'status', label: 'Status', icon: 'bi bi-info-circle', editable: true, type: 'select' },
     { key: 'remarks', label: 'Remarks', icon: 'bi bi-chat-left-text', editable: true, type: 'text' },
-    { key: 'follow_up', label: 'Follow Up', icon: 'bi bi-calendar-check', editable: true, type: 'text' },
-    { key: 'created_at', label: 'Created At', icon: 'bi bi-calendar', editable: false, type: 'text' }
+    { key: 'follow_up', label: 'Follow Up', icon: 'bi bi-calendar-check', editable: true, type: 'text' }
   ];
 
   editedFields: Map<string, Set<string>> = new Map();
@@ -85,6 +90,50 @@ export class LeadsTableComponent implements OnInit {
     saveChanges: false
   };
 
+  // Advanced Filter Properties
+  showAdvancedFilters = false;
+  sortOptions = {
+    field: '',
+    direction: 'asc'
+  };
+  filterCriteria = {
+    source: '',
+    designation: '',
+    city: '',
+    country: '',
+    status: [] as string[],
+    followUpFrom: '',
+    followUpTo: '',
+    searchText: ''
+  };
+  sortFields = [
+    { value: 'first_name', label: 'First Name' },
+    { value: 'last_name', label: 'Last Name' },
+    { value: 'follow_up', label: 'Follow-up Date' },
+    { value: 'created_at', label: 'Created Date' },
+    { value: 'status', label: 'Status' }
+  ];
+  sortDirections = [
+    { value: 'asc', label: 'Ascending' },
+    { value: 'desc', label: 'Descending' }
+  ];
+
+  // Column Filter Properties
+  showColumnFilters = false;
+  activeColumnFilter: string | null = null;
+  columnFilters: { [key: string]: any } = {};
+  columnFilterOptions: { [key: string]: string[] } = {};
+  columnSortDirections: { [key: string]: 'asc' | 'desc' | null } = {};
+  columnFilterCounts: { [key: string]: number } = {};
+
+  // Add these new properties
+  columnFilterTypes = {
+    text: ['source', 'first_name', 'last_name', 'designation', 'city', 'country', 'remarks'],
+    date: ['follow_up', 'created_at'],
+    status: ['status'],
+    contact: ['phone_no_1', 'phone_no_2', 'email_id_1', 'email_id_2', 'email_id_3']
+  };
+
   constructor(
     private leadService: LeadService,
     private logService: LogService
@@ -92,7 +141,21 @@ export class LeadsTableComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRowsFromDb();
-    this.checkForDuplicates();
+    this.initializeColumnFilters();
+  }
+
+  initializeColumnFilters(): void {
+    this.columns.forEach(column => {
+      this.columnFilters[column.key] = {
+        searchText: '',
+        selectedValues: {},
+        dateRange: { start: null, end: null },
+        sortDirection: null
+      };
+      this.columnFilterOptions[column.key] = [];
+      this.columnSortDirections[column.key] = null;
+      this.columnFilterCounts[column.key] = 0;
+    });
   }
 
   loadRowsFromDb(): void {
@@ -116,36 +179,88 @@ export class LeadsTableComponent implements OnInit {
     });
   }
 
-  checkForDuplicates(): void {
-    this.leadService.findDuplicateLeads().subscribe({
-      next: (duplicateGroups) => {
-        const groups = Array.isArray(duplicateGroups) ? duplicateGroups : [duplicateGroups];
-        this.duplicateCount = groups.reduce((total, group) => total + (Array.isArray(group) ? group.length - 1 : 0), 0);
-      },
-      error: (error) => {
-        console.error('Error finding duplicates:', error);
-        this.showErrorMessage('Error checking for duplicates');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
-  }
+  // checkForDuplicates(): void {
+  //   this.leadService.findDuplicateLeads().subscribe({
+  //     next: (duplicateGroups) => {
+  //       const groups = Array.isArray(duplicateGroups) ? duplicateGroups : [duplicateGroups];
+  //       this.duplicateCount = groups.reduce((total, group) => total + (Array.isArray(group) ? group.length - 1 : 0), 0);
+  //     },
+  //     error: (error) => {
+  //       console.error('Error finding duplicates:', error);
+  //       this.showErrorMessage('Error checking for duplicates');
+  //     },
+  //     complete: () => {
+  //       this.isLoading = false;
+  //     }
+  //   });
+  // }
 
-  removeDuplicates(): void {
-    this.showSuccessMessage(`${this.duplicateCount} duplicate leads have been merged/removed.`);
-    this.duplicateCount = 0;
-    this.loadRowsFromDb();
-  }
+  // removeDuplicates(): void {
+  //   if (this.duplicateCount === 0) {
+  //     this.showInfoMessage('No duplicates found to remove');
+  //     return;
+  //   }
+
+  //   this.loadingStates.deleteSelected = true;
+    
+  //   this.leadService.removeDuplicates().subscribe({
+  //     next: (response: { success: boolean; removed: number; message: string }) => {
+  //       if (response.success) {
+  //         this.showSuccessMessage(`${response.removed} duplicate leads have been removed.`);
+  //         this.duplicateCount = 0;
+  //         this.loadRowsFromDb();
+  //       } else {
+  //         this.showErrorMessage(`Failed to remove duplicates: ${response.message}`);
+  //       }
+  //     },
+  //     error: (error: any) => {
+  //       console.error('Error removing duplicates:', error);
+  //       this.showErrorMessage(`Error removing duplicates from the database: ${error.message || 'Unknown error occurred'}`);
+  //     },
+  //     complete: () => {
+  //       this.loadingStates.deleteSelected = false;
+  //     }
+  //   });
+  // }
 
   toggleRow(row: Lead): void {
     row.expanded = !row.expanded;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    // Get the clicked element
+    const target = event.target as HTMLElement;
+    
+    // Check if the click was outside of any active panel/mode
+    if (this.isEditMode && !target.closest('.table') && !target.closest('.btn-edit')) {
+      this.isEditMode = false;
+      if (this.editedFields.size > 0) {
+        this.saveAllChanges();
+      }
+    }
+    
+    if (this.showAllFilters && !target.closest('.filter-dropdown') && !target.closest('.btn-filter')) {
+      this.showAllFilters = false;
+      this.activeFilterColumn = null;
+    }
+    
+    if (this.isDeleteMode && !target.closest('.table') && !target.closest('.btn-delete')) {
+      this.isDeleteMode = false;
+      this.selectedRows.clear();
+    }
   }
 
   toggleEditMode(): void {
     this.isEditMode = !this.isEditMode;
     if (!this.isEditMode && this.editedFields.size > 0) {
       this.saveAllChanges();
+    }
+    // Close other modes when opening edit mode
+    if (this.isEditMode) {
+      this.showAllFilters = false;
+      this.isDeleteMode = false;
+      this.activeFilterColumn = null;
     }
   }
 
@@ -154,17 +269,42 @@ export class LeadsTableComponent implements OnInit {
     if (!this.isDeleteMode) {
       this.selectedRows.clear();
     }
-  }
-
-  toggleFilters(): void {
-    this.showAllFilters = !this.showAllFilters;
-    if (!this.showAllFilters) {
+    // Close other modes when opening delete mode
+    if (this.isDeleteMode) {
+      this.isEditMode = false;
+      this.showAllFilters = false;
       this.activeFilterColumn = null;
     }
   }
 
-  toggleColumnFilter(columnKey: string): void {
-    this.activeFilterColumn = this.activeFilterColumn === columnKey ? null : columnKey;
+  toggleFilters(): void {
+    this.showAdvancedFilters = !this.showAdvancedFilters;
+    if (!this.showAdvancedFilters) {
+      this.resetFilters();
+    }
+    // Close other modes when opening filters
+    if (this.showAdvancedFilters) {
+      this.isEditMode = false;
+      this.isDeleteMode = false;
+    }
+  }
+
+  resetFilters(): void {
+    this.filterCriteria = {
+      source: '',
+      designation: '',
+      city: '',
+      country: '',
+      status: [],
+      followUpFrom: '',
+      followUpTo: '',
+      searchText: ''
+    };
+    this.sortOptions = {
+      field: '',
+      direction: 'asc'
+    };
+    this.applyFilters();
   }
 
   toggleAddContactForm(): void {
@@ -324,10 +464,11 @@ export class LeadsTableComponent implements OnInit {
       this.loadingStates.deleteSelected = false;
       this.showSuccessMessage(`Successfully deleted ${ids.length} leads.`);
       this.loadRowsFromDb();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete leads';
+      this.showErrorMessage(errorMessage);
       console.error('Error deleting leads:', error);
       this.loadingStates.deleteSelected = false;
-      this.showErrorMessage(`Error deleting leads: ${error.message || 'Unknown error occurred'}`);
     }
   }
 
@@ -352,18 +493,83 @@ export class LeadsTableComponent implements OnInit {
     }
 
     this.loadingStates.importData = true;
-    this.leadService.importLeads(file).subscribe({
+    
+    // First check for duplicates
+    this.leadService.checkDuplicates(file).subscribe({
       next: (result) => {
-        this.showSuccessMessage(`Successfully imported ${result.count} leads`);
-        this.loadRowsFromDb();
-        target.value = '';
-        this.loadingStates.importData = false;
+        if (result.totalDuplicates > 0) {
+          // Show confirmation dialog
+          if (confirm(`${result.totalDuplicates} duplicate leads found. Do you want to skip importing these duplicates?`)) {
+            // User chose to skip duplicates
+            this.leadService.importLeadsWithOptions(file, true).subscribe({
+              next: (importResult) => {
+                this.showSuccessMessage(`Successfully imported ${importResult.count} leads`);
+                this.loadRowsFromDb();
+                target.value = '';
+                this.loadingStates.importData = false;
+              },
+              error: (error) => {
+                this.showErrorMessage(`Error importing leads: ${error.message}`);
+                this.loadingStates.importData = false;
+              }
+            });
+          } else {
+            // User chose to import all including duplicates
+            this.leadService.importLeadsWithOptions(file, false).subscribe({
+              next: (importResult) => {
+                this.showSuccessMessage(`Successfully imported ${importResult.count} leads, and skipped ${importResult.skipped} duplicates`);
+                this.loadRowsFromDb();
+                target.value = '';
+                this.loadingStates.importData = false;
+              },
+              error: (error) => {
+                this.showErrorMessage(`Error importing leads: ${error.message}`);
+                this.loadingStates.importData = false;
+              }
+            });
+          }
+        } else {
+          // No duplicates found, proceed with normal import
+          this.leadService.importLeads(file).subscribe({
+            next: (result) => {
+              this.showSuccessMessage(`Successfully imported ${result.count} leads`);
+              this.loadRowsFromDb();
+              target.value = '';
+              this.loadingStates.importData = false;
+            },
+            error: (error) => {
+              this.showErrorMessage(`Error importing leads: ${error.message}`);
+              this.loadingStates.importData = false;
+            }
+          });
+        }
       },
       error: (error) => {
-        this.showErrorMessage(`Error importing leads: ${error.message}`);
+        this.showErrorMessage(`Error checking for duplicates: ${error.message}`);
         this.loadingStates.importData = false;
       }
     });
+  }
+
+  async clearAllLeads() {
+    if (!confirm('Are you sure you want to clear ALL leads? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await this.leadService.clearAllLeads().toPromise();
+      
+      if (response.success) {
+        this.showSuccessMessage(`Successfully cleared ${response.deletedCount} leads`);
+        this.loadRowsFromDb(); // Refresh the table
+      } else {
+        this.showErrorMessage(response.message || 'Failed to clear leads');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to clear leads';
+      this.showErrorMessage(errorMessage);
+      console.error('Error clearing all leads:', error);
+    }
   }
 
   private async showConfirmation(message: string): Promise<boolean> {
@@ -411,14 +617,14 @@ export class LeadsTableComponent implements OnInit {
 
     const data = this.filteredLeads.map(lead => ({
       Source: lead.source,
-      'First Name': lead.first_name,
-      'Last Name': lead.last_name,
+      'First_Name': lead.first_name,
+      'Last_Name': lead.last_name,
       Designation: lead.designation,
-      'Phone No 1': lead.phone_no_1,
-      'Phone No 2': lead.phone_no_2,  // Added
-      'Email 1': lead.email_id_1,
-      'Email 2': lead.email_id_2,     // Added
-      'Email 3': lead.email_id_3,     // Added
+      'Phone_No_1': lead.phone_no_1,
+      'Phone_No_2': lead.phone_no_2,  // Added
+      'Email_id_1': lead.email_id_1,
+      'Email_id_2': lead.email_id_2,     // Added
+      'Email_id_3': lead.email_id_3,     // Added
       Website: lead.website,
       Address: lead.address,          // Added
       City: lead.city,               // Added
@@ -441,5 +647,317 @@ export class LeadsTableComponent implements OnInit {
       XLSX.writeFile(wb, 'leads_export.xlsx');
       this.showInfoMessage('Excel file exported successfully');
     }
+  }
+
+  handleEmailClick(email: string): void {
+    if (email && email.trim()) {
+      window.location.href = `mailto:${email.trim()}`;
+    }
+  }
+
+  handlePhoneClick(phone: string): void {
+    if (phone && phone.trim()) {
+      window.location.href = `tel:${phone.trim()}`;
+    }
+  }
+
+  handleWebsiteClick(website: string): void {
+    if (website && website.trim()) {
+      // Ensure website has http/https prefix
+      const url = website.trim().startsWith('http') ? website.trim() : `https://${website.trim()}`;
+      window.open(url, '_blank');
+    }
+  }
+
+  scanForDuplicates(): void {
+    this.isLoading = true;
+    this.showInfoMessage('Scanning for duplicates... This may take a few moments.');
+    
+    this.leadService.scanDuplicates().subscribe({
+      next: (result) => {
+        if (result.totalDuplicates > 0) {
+          if (confirm(`Found ${result.totalDuplicates} duplicate leads in ${result.totalGroups} groups. Do you want to delete the duplicates and keep only one entry for each group?`)) {
+            this.showInfoMessage('Removing duplicates... This may take a few moments.');
+            this.removeDuplicates();
+          } else {
+            this.isLoading = false;
+          }
+        } else {
+          this.showInfoMessage('No duplicate leads found.');
+          this.isLoading = false;
+        }
+      },
+      error: (error) => {
+        this.showErrorMessage(error.message || 'Error scanning for duplicates. Please try again.');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  private removeDuplicates(): void {
+    this.leadService.removeDuplicates().subscribe({
+      next: (result) => {
+        if (result.success) {
+          this.showSuccessMessage(result.message);
+          this.loadRowsFromDb();
+        } else {
+          this.showErrorMessage('Failed to remove duplicates');
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        this.showErrorMessage(error.message || 'Error removing duplicates. Please try again.');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  onStatusChange(row: Lead, newStatus: string): void {
+    if (!newStatus) {
+      newStatus = 'New'; // Default to 'New' if no status is selected
+    }
+    this.onFieldEdit(row, 'status', newStatus);
+  }
+
+  applyAdvancedFilters(): void {
+    let filtered = [...this.leads];
+
+    // Apply text-based filters
+    if (this.filterCriteria.source) {
+      filtered = filtered.filter(lead => 
+        lead.source?.toLowerCase().includes(this.filterCriteria.source.toLowerCase())
+      );
+    }
+    if (this.filterCriteria.designation) {
+      filtered = filtered.filter(lead => 
+        lead.designation?.toLowerCase().includes(this.filterCriteria.designation.toLowerCase())
+      );
+    }
+    if (this.filterCriteria.city) {
+      filtered = filtered.filter(lead => 
+        lead.city?.toLowerCase().includes(this.filterCriteria.city.toLowerCase())
+      );
+    }
+    if (this.filterCriteria.country) {
+      filtered = filtered.filter(lead => 
+        lead.country?.toLowerCase().includes(this.filterCriteria.country.toLowerCase())
+      );
+    }
+    if (this.filterCriteria.status.length > 0) {
+      filtered = filtered.filter(lead => 
+        this.filterCriteria.status.includes(lead.status || '')
+      );
+    }
+
+    // Apply date range filter
+    if (this.filterCriteria.followUpFrom || this.filterCriteria.followUpTo) {
+      filtered = filtered.filter(lead => {
+        if (!lead.follow_up) return false;
+        const followUpDate = new Date(lead.follow_up);
+        const fromDate = this.filterCriteria.followUpFrom ? new Date(this.filterCriteria.followUpFrom) : null;
+        const toDate = this.filterCriteria.followUpTo ? new Date(this.filterCriteria.followUpTo) : null;
+        
+        if (fromDate && followUpDate < fromDate) return false;
+        if (toDate && followUpDate > toDate) return false;
+        return true;
+      });
+    }
+
+    // Apply search text filter
+    if (this.filterCriteria.searchText) {
+      const searchText = this.filterCriteria.searchText.toLowerCase();
+      filtered = filtered.filter(lead => 
+        lead.phone_no_1?.toLowerCase().includes(searchText) ||
+        lead.phone_no_2?.toLowerCase().includes(searchText) ||
+        lead.email_id_1?.toLowerCase().includes(searchText) ||
+        lead.email_id_2?.toLowerCase().includes(searchText) ||
+        lead.email_id_3?.toLowerCase().includes(searchText)
+      );
+    }
+
+    // Apply sorting
+    if (this.sortOptions.field) {
+      filtered.sort((a, b) => {
+        let valueA = a[this.sortOptions.field as keyof Lead];
+        let valueB = b[this.sortOptions.field as keyof Lead];
+
+        // Handle date fields
+        if (this.sortOptions.field === 'follow_up' || this.sortOptions.field === 'created_at') {
+          valueA = valueA ? new Date(valueA as string).getTime() : 0;
+          valueB = valueB ? new Date(valueB as string).getTime() : 0;
+        }
+
+        // Handle status field with custom order
+        if (this.sortOptions.field === 'status') {
+          const statusOrder = { 'New': 0, 'Pending': 1, 'Closed': 2 };
+          valueA = statusOrder[valueA as keyof typeof statusOrder] ?? 0;
+          valueB = statusOrder[valueB as keyof typeof statusOrder] ?? 0;
+        }
+
+        // Handle string fields
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
+        }
+
+        if (valueA < valueB) return this.sortOptions.direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return this.sortOptions.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    this.filteredLeads = filtered;
+    this.totalPages = Math.ceil(this.filteredLeads.length / this.itemsPerPage);
+    this.goToPage(1);
+  }
+
+  toggleColumnFilters(): void {
+    this.showColumnFilters = !this.showColumnFilters;
+    if (!this.showColumnFilters) {
+      this.activeColumnFilter = null;
+    }
+  }
+
+  toggleColumnFilter(columnKey: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.activeColumnFilter = this.activeColumnFilter === columnKey ? null : columnKey;
+    
+    if (this.activeColumnFilter === columnKey) {
+      this.updateColumnFilterOptions(columnKey);
+    }
+  }
+
+  updateColumnFilterOptions(columnKey: string): void {
+    const uniqueValues = new Set<string>();
+    this.leads.forEach(lead => {
+      const value = lead[columnKey as keyof Lead];
+      if (value) {
+        uniqueValues.add(String(value));
+      }
+    });
+    this.columnFilterOptions[columnKey] = Array.from(uniqueValues).sort();
+  }
+
+  applyColumnFilter(columnKey: string): void {
+    let filteredLeads = [...this.leads];
+
+    // Apply text search if exists
+    if (this.columnFilters[columnKey].searchText) {
+      const searchText = this.columnFilters[columnKey].searchText.toLowerCase();
+      filteredLeads = filteredLeads.filter(lead => 
+        lead[columnKey]?.toString().toLowerCase().includes(searchText)
+      );
+    }
+
+    // Apply selected values if any are selected
+    const selectedValues = this.columnFilters[columnKey].selectedValues;
+    const hasSelectedValues = Object.values(selectedValues).some(value => value);
+    if (hasSelectedValues) {
+      filteredLeads = filteredLeads.filter(lead => 
+        selectedValues[lead[columnKey]?.toString()]
+      );
+    }
+
+    // Apply date range if exists
+    if (this.columnFilters[columnKey].dateRange.start || this.columnFilters[columnKey].dateRange.end) {
+      const { start, end } = this.columnFilters[columnKey].dateRange;
+      filteredLeads = filteredLeads.filter(lead => {
+        const date = new Date(lead[columnKey]);
+        return (!start || date >= start) && (!end || date <= end);
+      });
+    }
+
+    // Apply sorting if exists
+    if (this.columnFilters[columnKey].sortDirection) {
+      filteredLeads.sort((a, b) => {
+        const aValue = a[columnKey];
+        const bValue = b[columnKey];
+        if (this.columnFilters[columnKey].sortDirection === 'asc') {
+          return aValue > bValue ? 1 : -1;
+        } else {
+          return aValue < bValue ? 1 : -1;
+        }
+      });
+    }
+
+    this.filteredLeads = filteredLeads;
+    this.totalPages = Math.ceil(filteredLeads.length / this.itemsPerPage);
+    this.currentPage = 1;
+
+    // Close the dropdown after applying filters
+    this.activeColumnFilter = null;
+  }
+
+  clearColumnFilter(columnKey: string): void {
+    this.columnFilters[columnKey] = {
+      searchText: '',
+      selectedValues: {},
+      dateRange: { start: null, end: null },
+      sortDirection: null
+    };
+    this.columnFilterCounts[columnKey] = 0;
+    this.applyColumnFilter(columnKey);
+    // Keep the dropdown open after clearing
+    this.activeColumnFilter = columnKey;
+  }
+
+  clearAllColumnFilters(): void {
+    this.columns.forEach(column => {
+      this.clearColumnFilter(column.key);
+    });
+    this.activeColumnFilter = null;
+  }
+
+  updateFilterCount(columnKey: string): void {
+    const filter = this.columnFilters[columnKey];
+    let count = 0;
+
+    if (filter.searchText) count++;
+    if (Object.values(filter.selectedValues).length > 0) count += Object.values(filter.selectedValues).length;
+    if (filter.dateRange.start || filter.dateRange.end) count++;
+    if (filter.sortDirection) count++;
+
+    this.columnFilterCounts[columnKey] = count;
+  }
+
+  isColumnFiltered(columnKey: string): boolean {
+    return this.columnFilterCounts[columnKey] > 0;
+  }
+
+  getColumnType(columnKey: string): 'text' | 'date' | 'status' | 'contact' {
+    if (this.columnFilterTypes.text.includes(columnKey)) return 'text';
+    if (this.columnFilterTypes.date.includes(columnKey)) return 'date';
+    if (this.columnFilterTypes.status.includes(columnKey)) return 'status';
+    if (this.columnFilterTypes.contact.includes(columnKey)) return 'contact';
+    return 'text'; // default type
+  }
+
+  getTotalActiveFilters(): number {
+    return Object.values(this.columnFilterCounts).reduce((total, count) => total + count, 0);
+  }
+
+  // Add these new methods
+  isAllSelected(columnKey: string): boolean {
+    const options = this.columnFilterOptions[columnKey] || [];
+    const selectedValues = this.columnFilters[columnKey]?.selectedValues || {};
+    return options.length > 0 && options.every(option => selectedValues[option]);
+  }
+
+  toggleSelectAll(columnKey: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const options = this.columnFilterOptions[columnKey] || [];
+    
+    // Initialize selectedValues if it doesn't exist
+    if (!this.columnFilters[columnKey].selectedValues) {
+      this.columnFilters[columnKey].selectedValues = {};
+    }
+
+    // Set all options to the checked state
+    options.forEach(option => {
+      this.columnFilters[columnKey].selectedValues[option] = checked;
+    });
+
+    // Update filter count
+    this.updateFilterCount(columnKey);
   }
 }

@@ -361,6 +361,10 @@ app.put('/api/leads/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
+    console.log('Updating lead:', id);
+    console.log('Update data:', updates);
+    console.log('Status value:', updates.status);
+
     const result = await pool.query(
       `UPDATE leads SET
         source = $1, first_name = $2, last_name = $3, designation = $4,
@@ -378,6 +382,8 @@ app.put('/api/leads/:id', authenticateToken, async (req, res) => {
       ]
     );
 
+    console.log('Update result:', result.rows[0]);
+
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Lead not found' });
     }
@@ -388,6 +394,365 @@ app.put('/api/leads/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+app.delete('/api/leads/clear-all', authenticateToken, async (req, res) => {
+  console.log('Clear all leads endpoint called');
+  try {
+    console.log('Attempting to delete all leads...');
+    // Use pool.query directly instead of a transaction
+    const result = await pool.query('DELETE FROM leads');
+    console.log(`Successfully deleted ${result.rowCount} leads`);
+    
+    res.json({
+      message: 'All leads have been successfully cleared',
+      deletedCount: result.rowCount,
+      success: true
+    });
+  } catch (error) {
+    console.error('Error clearing all leads:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    res.status(500).json({
+      message: 'Failed to clear leads',
+      error: error.message,
+      success: false
+    });
+  }
+});
+
+// ================== Duplicate Leads ==================
+
+app.get('/api/leads/scan-duplicates', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Find duplicates based on all specified fields
+    const duplicatesResult = await client.query(`
+      WITH duplicate_groups AS (
+        SELECT 
+          source,
+          first_name,
+          last_name,
+          designation,
+          phone_no_1,
+          phone_no_2,
+          email_id_1,
+          email_id_2,
+          email_id_3,
+          website,
+          address,
+          city,
+          country,
+          status,
+          remarks,
+          follow_up,
+          COUNT(*) as count,
+          array_agg(id) as ids
+        FROM leads
+        GROUP BY 
+          source,
+          first_name,
+          last_name,
+          designation,
+          phone_no_1,
+          phone_no_2,
+          email_id_1,
+          email_id_2,
+          email_id_3,
+          website,
+          address,
+          city,
+          country,
+          status,
+          remarks,
+          follow_up
+        HAVING COUNT(*) > 1
+      )
+      SELECT 
+        dg.*,
+        json_agg(l.*) as duplicate_leads
+      FROM duplicate_groups dg
+      JOIN leads l ON l.id = ANY(dg.ids)
+      GROUP BY 
+        dg.source,
+        dg.first_name,
+        dg.last_name,
+        dg.designation,
+        dg.phone_no_1,
+        dg.phone_no_2,
+        dg.email_id_1,
+        dg.email_id_2,
+        dg.email_id_3,
+        dg.website,
+        dg.address,
+        dg.city,
+        dg.country,
+        dg.status,
+        dg.remarks,
+        dg.follow_up,
+        dg.count,
+        dg.ids
+    `);
+
+    await client.query('COMMIT');
+
+    // Calculate total duplicate rows (excluding the first occurrence in each group)
+    const totalDuplicates = duplicatesResult.rows.reduce((total, group) => total + (group.count - 1), 0);
+
+    res.json({
+      success: true,
+      totalGroups: duplicatesResult.rows.length,
+      totalDuplicates: totalDuplicates,
+      duplicateGroups: duplicatesResult.rows
+    });
+  } catch (err) {
+    if (client) {
+      await client.query('ROLLBACK');
+    }
+    console.error('Error scanning duplicates:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to scan for duplicates',
+      error: err.message
+    });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+app.delete('/api/leads/remove-duplicates', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    console.log('Starting duplicate removal process...');
+    client = await pool.connect();
+    console.log('Database connection established');
+    
+    await client.query('BEGIN');
+    console.log('Transaction started');
+
+    // First, get the count of duplicates to be removed
+    console.log('Executing count query...');
+    const countResult = await client.query(`
+      WITH duplicate_groups AS (
+        SELECT 
+          COALESCE(source, '') as source,
+          COALESCE(first_name, '') as first_name,
+          COALESCE(last_name, '') as last_name,
+          COALESCE(designation, '') as designation,
+          COALESCE(phone_no_1, '') as phone_no_1,
+          COALESCE(phone_no_2, '') as phone_no_2,
+          COALESCE(email_id_1, '') as email_id_1,
+          COALESCE(email_id_2, '') as email_id_2,
+          COALESCE(email_id_3, '') as email_id_3,
+          COALESCE(website, '') as website,
+          COALESCE(address, '') as address,
+          COALESCE(city, '') as city,
+          COALESCE(country, '') as country,
+          COALESCE(status, '') as status,
+          COALESCE(remarks, '') as remarks,
+          follow_up,
+          COUNT(*) as group_count
+        FROM leads
+        GROUP BY 
+          COALESCE(source, ''),
+          COALESCE(first_name, ''),
+          COALESCE(last_name, ''),
+          COALESCE(designation, ''),
+          COALESCE(phone_no_1, ''),
+          COALESCE(phone_no_2, ''),
+          COALESCE(email_id_1, ''),
+          COALESCE(email_id_2, ''),
+          COALESCE(email_id_3, ''),
+          COALESCE(website, ''),
+          COALESCE(address, ''),
+          COALESCE(city, ''),
+          COALESCE(country, ''),
+          COALESCE(status, ''),
+          COALESCE(remarks, ''),
+          follow_up
+        HAVING COUNT(*) > 1
+      )
+      SELECT SUM(group_count - 1) as total_duplicates
+      FROM duplicate_groups
+    `);
+    console.log('Count query completed:', countResult.rows[0]);
+
+    const totalDuplicates = parseInt(countResult.rows[0]?.total_duplicates || 0);
+    console.log('Total duplicates found:', totalDuplicates);
+
+    if (totalDuplicates === 0) {
+      console.log('No duplicates found, committing transaction and returning');
+      await client.query('COMMIT');
+      return res.json({
+        success: true,
+        message: 'No duplicates found to remove',
+        removedCount: 0
+      });
+    }
+
+    // Now delete the duplicates using a more efficient query
+    console.log('Executing delete query...');
+    const deleteResult = await client.query(`
+      WITH duplicate_groups AS (
+        SELECT 
+          COALESCE(source, '') as source,
+          COALESCE(first_name, '') as first_name,
+          COALESCE(last_name, '') as last_name,
+          COALESCE(designation, '') as designation,
+          COALESCE(phone_no_1, '') as phone_no_1,
+          COALESCE(phone_no_2, '') as phone_no_2,
+          COALESCE(email_id_1, '') as email_id_1,
+          COALESCE(email_id_2, '') as email_id_2,
+          COALESCE(email_id_3, '') as email_id_3,
+          COALESCE(website, '') as website,
+          COALESCE(address, '') as address,
+          COALESCE(city, '') as city,
+          COALESCE(country, '') as country,
+          COALESCE(status, '') as status,
+          COALESCE(remarks, '') as remarks,
+          follow_up
+        FROM leads
+        GROUP BY 
+          COALESCE(source, ''),
+          COALESCE(first_name, ''),
+          COALESCE(last_name, ''),
+          COALESCE(designation, ''),
+          COALESCE(phone_no_1, ''),
+          COALESCE(phone_no_2, ''),
+          COALESCE(email_id_1, ''),
+          COALESCE(email_id_2, ''),
+          COALESCE(email_id_3, ''),
+          COALESCE(website, ''),
+          COALESCE(address, ''),
+          COALESCE(city, ''),
+          COALESCE(country, ''),
+          COALESCE(status, ''),
+          COALESCE(remarks, ''),
+          follow_up
+        HAVING COUNT(*) > 1
+      ),
+      duplicate_ids AS (
+        SELECT l.id
+        FROM leads l
+        JOIN duplicate_groups dg ON
+          COALESCE(l.source, '') = dg.source
+          AND COALESCE(l.first_name, '') = dg.first_name
+          AND COALESCE(l.last_name, '') = dg.last_name
+          AND COALESCE(l.designation, '') = dg.designation
+          AND COALESCE(l.phone_no_1, '') = dg.phone_no_1
+          AND COALESCE(l.phone_no_2, '') = dg.phone_no_2
+          AND COALESCE(l.email_id_1, '') = dg.email_id_1
+          AND COALESCE(l.email_id_2, '') = dg.email_id_2
+          AND COALESCE(l.email_id_3, '') = dg.email_id_3
+          AND COALESCE(l.website, '') = dg.website
+          AND COALESCE(l.address, '') = dg.address
+          AND COALESCE(l.city, '') = dg.city
+          AND COALESCE(l.country, '') = dg.country
+          AND COALESCE(l.status, '') = dg.status
+          AND COALESCE(l.remarks, '') = dg.remarks
+          AND (l.follow_up IS NULL AND dg.follow_up IS NULL OR l.follow_up = dg.follow_up)
+        WHERE l.id NOT IN (
+          SELECT DISTINCT ON (
+            COALESCE(source, ''),
+            COALESCE(first_name, ''),
+            COALESCE(last_name, ''),
+            COALESCE(designation, ''),
+            COALESCE(phone_no_1, ''),
+            COALESCE(phone_no_2, ''),
+            COALESCE(email_id_1, ''),
+            COALESCE(email_id_2, ''),
+            COALESCE(email_id_3, ''),
+            COALESCE(website, ''),
+            COALESCE(address, ''),
+            COALESCE(city, ''),
+            COALESCE(country, ''),
+            COALESCE(status, ''),
+            COALESCE(remarks, ''),
+            follow_up
+          ) id
+          FROM leads
+          ORDER BY 
+            COALESCE(source, ''),
+            COALESCE(first_name, ''),
+            COALESCE(last_name, ''),
+            COALESCE(designation, ''),
+            COALESCE(phone_no_1, ''),
+            COALESCE(phone_no_2, ''),
+            COALESCE(email_id_1, ''),
+            COALESCE(email_id_2, ''),
+            COALESCE(email_id_3, ''),
+            COALESCE(website, ''),
+            COALESCE(address, ''),
+            COALESCE(city, ''),
+            COALESCE(country, ''),
+            COALESCE(status, ''),
+            COALESCE(remarks, ''),
+            follow_up,
+            created_at ASC
+        )
+      )
+      DELETE FROM leads
+      WHERE id IN (SELECT id FROM duplicate_ids)
+      RETURNING id
+    `);
+    console.log('Delete query completed. Rows affected:', deleteResult.rowCount);
+
+    await client.query('COMMIT');
+    console.log('Transaction committed');
+
+    // Log the deletion
+    console.log('Logging deletion...');
+    await client.query(
+      'INSERT INTO logs (action, entity, entity_id, details, created_by) VALUES ($1, $2, $3, $4, $5)',
+      ['delete_duplicates', 'lead', null, `Removed ${deleteResult.rowCount} duplicate leads`, req.user.id]
+    );
+    console.log('Deletion logged successfully');
+
+    res.json({
+      success: true,
+      message: `Successfully removed ${deleteResult.rowCount} duplicate leads`,
+      removedCount: deleteResult.rowCount
+    });
+  } catch (err) {
+    console.error('Error in remove-duplicates endpoint:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      where: err.where
+    });
+    
+    if (client) {
+      console.log('Rolling back transaction...');
+      await client.query('ROLLBACK');
+      console.log('Transaction rolled back');
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove duplicates',
+      error: err.message,
+      details: err.stack,
+      code: err.code,
+      detail: err.detail
+    });
+  } finally {
+    if (client) {
+      console.log('Releasing database connection');
+      client.release();
+    }
+  }
+});
+
+// ================== Individual Lead Operations ==================
 
 app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
   try {
@@ -607,71 +972,6 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
   }
 });
 
-// ================== Duplicate Leads ==================
-
-app.get('/api/leads/duplicates', authenticateToken, async (req, res) => {
-  try {
-    console.log('Finding duplicate leads...');
-    
-    // Get all columns from the leads table with their data types
-    const schemaResult = await pool.query(
-      'SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1',
-      ['leads']
-    );
-    
-    console.log('Available columns:', schemaResult.rows);
-    
-    // Find a suitable identifier column (any text or varchar column)
-    let identifierColumn = null;
-    for (const column of schemaResult.rows) {
-      if (column.column_name !== 'id' && 
-          (column.data_type === 'text' || column.data_type === 'character varying')) {
-        identifierColumn = column.column_name;
-        break;
-      }
-    }
-
-    if (!identifierColumn) {
-      console.log('No suitable identifier column found');
-      res.json({ duplicates: [] });
-      return;
-    }
-
-    console.log('Using identifier column:', identifierColumn);
-    
-    // Get all leads grouped by the identifier column
-    const result = await pool.query(`
-      SELECT ${identifierColumn}, array_agg(id) as lead_ids
-      FROM leads 
-      GROUP BY ${identifierColumn} 
-      HAVING COUNT(*) > 1
-      ORDER BY COUNT(*) DESC
-    `);
-    
-    // Convert the result to an array of arrays format
-    const duplicateGroups = result.rows.map(row => {
-      const leads = row.lead_ids.map(id => ({
-        id: id,
-        [identifierColumn]: row[identifierColumn]
-      }));
-      return leads;
-    });
-    
-    console.log('Found duplicate groups:', duplicateGroups);
-    // Ensure we always return an array of arrays
-    const finalResult = duplicateGroups.length > 0 ? duplicateGroups : [];
-    console.log('Final result:', finalResult);
-    res.json(finalResult);
-  } catch (err) {
-    console.error('Detailed error:', err);
-    console.error('Stack trace:', err.stack);
-    res.status(500).json({ 
-      message: 'Failed to find duplicate leads',
-      error: err.message 
-    });
-  }
-});
-
 // ================== Import Leads ==================
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -705,6 +1005,7 @@ app.post('/api/leads/import', authenticateToken, upload.single('file'), async (r
     // Parse the file
     const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
+    console.log("File Buffer Sheet Name:"+sheetName);
     const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
     console.log(`Parsed ${rows.length} rows from file`);
 
@@ -732,102 +1033,85 @@ app.post('/api/leads/import', authenticateToken, upload.single('file'), async (r
       'Follow Up': 'follow_up'
     };
 
+    // Check for duplicates before importing
+    const duplicates = [];
+    const nonDuplicates = [];
+
+    for (const row of rows) {
+      const mappedRow = {};
+      for (const [excelField, dbField] of Object.entries(fieldMapping)) {
+        mappedRow[dbField] = row[excelField] || null;
+      }
+
+      // Check for duplicates using multiple fields
+      const duplicateQuery = `
+        SELECT * FROM leads 
+        WHERE (
+          (email_id_1 = $1 AND email_id_1 IS NOT NULL) OR
+          (email_id_2 = $1 AND email_id_2 IS NOT NULL) OR
+          (email_id_3 = $1 AND email_id_3 IS NOT NULL) OR
+          (phone_no_1 = $2 AND phone_no_1 IS NOT NULL) OR
+          (phone_no_2 = $2 AND phone_no_2 IS NOT NULL)
+        )
+        AND first_name = $3
+        AND last_name = $4
+      `;
+
+      const duplicateResult = await client.query(duplicateQuery, [
+        mappedRow.email_id_1,
+        mappedRow.phone_no_1,
+        mappedRow.first_name,
+        mappedRow.last_name
+      ]);
+
+      if (duplicateResult.rows.length > 0) {
+        duplicates.push({
+          new: mappedRow,
+          existing: duplicateResult.rows[0]
+        });
+              } else {
+        nonDuplicates.push(mappedRow);
+      }
+    }
+
+    // If this is just a check for duplicates, return the results
+    if (req.query.checkOnly === 'true') {
+      return res.json({
+        duplicates: duplicates,
+        nonDuplicates: nonDuplicates,
+        totalDuplicates: duplicates.length,
+        totalNonDuplicates: nonDuplicates.length
+      });
+    }
+
+    // If we're proceeding with import, check if we should skip duplicates
+    const skipDuplicates = req.query.skipDuplicates === 'true';
+    const leadsToImport = skipDuplicates ? nonDuplicates : rows.map(row => {
+      const mappedRow = {};
+      for (const [excelField, dbField] of Object.entries(fieldMapping)) {
+        mappedRow[dbField] = row[excelField] || null;
+      }
+      return mappedRow;
+    });
+
     let importedCount = 0;
     let skippedCount = 0;
-    let errors = [];
+    const errors = [];
 
-    // Process each row
-    for (const row of rows) {
+    // Begin transaction
+    await client.query('BEGIN');
+
+    for (const row of leadsToImport) {
       try {
-        // Start a new transaction for each row
-        await client.query('BEGIN');
-
-        const values = [];
-        const columns = [];
-        
-        // Process each field from the mapping
-        Object.entries(fieldMapping).forEach(([excelField, dbField]) => {
-          const value = row[excelField];
-          if (value !== undefined && value !== '') {
-            columns.push(dbField);
-            // Convert phone numbers to strings and handle special cases
-            if (dbField.includes('phone_no')) {
-              let phoneValue = String(value).trim();
-              // Clean phone number but allow empty values
-              phoneValue = phoneValue.replace(/[^\d+-]/g, '');
-              // If phone number is empty after cleaning, store empty string instead of null
-              values.push(phoneValue || '');
-            } else if (dbField === 'follow_up' && value) {
-              // Handle date fields
-              const date = new Date(value);
-              values.push(date instanceof Date && !isNaN(date) ? date : null);
-            } else if (dbField === 'status') {
-              // Use default status if not provided
-              values.push(value || 'New');
-            } else {
-              values.push(value);
-            }
-          }
-        });
-
-        // Add required fields at the end
-        columns.push('created_by', 'created_at', 'updated_at', 'status');
-        values.push(req.user.id, new Date(), new Date(), 'New');
-
-        // Skip empty rows
-        if (columns.length <= 4) { // Only has required fields
-          await client.query('ROLLBACK');
-          skippedCount++;
-          continue;
-        }
-
-        // Check for duplicates based on email_id_1
-        if (row['Email Id 1']) {
-          const duplicateCheck = await client.query(
-            'SELECT id FROM leads WHERE email_id_1 = $1',
-            [row['Email Id 1']]
-          );
-          
-          if (duplicateCheck.rows.length > 0) {
-            // Update existing lead instead of skipping
-            const leadId = duplicateCheck.rows[0].id;
-            const updateColumns = columns.filter(col => col !== 'created_by' && col !== 'created_at' && col !== 'updated_at' && col !== 'status');
-            const updateValues = values.slice(4); // Skip first 4 values (required fields)
-            
-            if (updateColumns.length > 0) {
-              const updateSet = updateColumns.map(col => `${col} = $${col}`).join(', ');
-              await client.query(
-                `UPDATE leads SET ${updateSet}, updated_at = CURRENT_TIMESTAMP WHERE id = $id`,
-                {...Object.fromEntries(updateColumns.map((col, i) => [col, updateValues[i]])), id: leadId}
-              );
-              importedCount++;
-              
-              // Log the update
-              await client.query(
-                'INSERT INTO logs (action, entity, entity_id, details, created_by) VALUES ($1, $2, $3, $4, $5)',
-                ['update', 'lead', leadId, `Updated lead: ${row['First Name']} (${row['Email Id 1']})`, req.user.id]
-              );
-            }
-            await client.query('COMMIT');
-            continue;
-          }
-        }
-
-        // Prepare insert query
+        const columns = Object.keys(row);
+        const values = Object.values(row);
         const placeholders = columns.map((_, i) => `$${i + 1}`);
+
         const query = `INSERT INTO leads (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`;
 
         await client.query(query, values);
-        await client.query('COMMIT');
         importedCount++;
-
-        // Log the successful import
-        await client.query(
-          'INSERT INTO logs (action, entity, entity_id, details, created_by) VALUES ($1, $2, $3, $4, $5)',
-          ['create', 'lead', null, `Imported lead: ${row['First Name']} (${row['Email Id 1']})`, req.user.id]
-        );
       } catch (err) {
-        await client.query('ROLLBACK');
         console.error('Error processing row:', row, err);
         errors.push({
           row: row,
@@ -836,6 +1120,14 @@ app.post('/api/leads/import', authenticateToken, upload.single('file'), async (r
         skippedCount++;
       }
     }
+
+    await client.query('COMMIT');
+    
+    // Log the import only once after all rows are processed
+    await client.query(
+      'INSERT INTO logs (action, entity, entity_id, details, created_by) VALUES ($1, $2, $3, $4, $5)',
+      ['create', 'lead', null, `Imported ${importedCount} leads from file: ${req.file.originalname}`, req.user.id]
+    );
     
     res.json({ 
       message: 'Import completed', 
@@ -846,6 +1138,7 @@ app.post('/api/leads/import', authenticateToken, upload.single('file'), async (r
       success: true
     });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Import error:', err);
     res.status(500).json({ 
       message: 'Import failed', 
@@ -1053,7 +1346,7 @@ app.get('/api/leads/export', authenticateToken, async (req, res) => {
       // Log the export
       await client.query(
         'INSERT INTO logs (action, entity, entity_id, details, created_by) VALUES ($1, $2, $3, $4, $5)',
-        ['export', 'lead', null, `Exported ${result.rows.length} leads`, req.user.id]
+        ['export', 'lead', null, `Exported leads to file: leads_export.xlsx`, req.user.id]
       );
     } catch (err) {
       console.error('Export error:', err);
@@ -1070,150 +1363,6 @@ app.get('/api/leads/export', authenticateToken, async (req, res) => {
       message: 'Failed to export leads',
       error: err.message
     });
-  }
-});
-
-// ================== Remove Duplicates ==================
-app.delete('/api/leads/remove-duplicates', authenticateToken, async (req, res) => {
-  let client;
-  try {
-    console.log('Starting duplicate removal process...');
-    
-    // Validate that no ID is being passed in the URL
-    if (req.params.id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid request format. This endpoint does not accept IDs in the URL',
-        error: 'This endpoint is used to remove duplicates and should be called without any parameters'
-      });
-    }
-
-    client = await pool.connect();
-    console.log('Database connection established');
-    
-    // Start transaction
-    await client.query('BEGIN');
-    console.log('Transaction started');
-
-    // First, get all duplicates based on email_id_1, keeping the oldest record
-    const duplicatesResult = await client.query(`
-      WITH ranked_leads AS (
-        SELECT id, email_id_1, ROW_NUMBER() OVER (PARTITION BY email_id_1 ORDER BY created_at ASC) as rn
-        FROM leads
-        WHERE email_id_1 IS NOT NULL
-      )
-      SELECT id, email_id_1
-      FROM ranked_leads
-      WHERE rn > 1
-    `);
-
-    console.log(`Found ${duplicatesResult.rows.length} duplicates`);
-    if (duplicatesResult.rows.length === 0) {
-      await client.query('COMMIT');
-      console.log('No duplicates found, committing transaction');
-      return res.json({
-        message: 'No duplicates found',
-        removed: 0,
-        success: true
-      });
-    }
-
-    // Delete duplicates, keeping the oldest record
-    const idsToDelete = duplicatesResult.rows.map(row => row.id);
-    console.log('IDs to delete:', idsToDelete);
-    
-    // First verify these IDs exist
-    const verifyResult = await client.query(
-      'SELECT id FROM leads WHERE id = ANY($1::uuid[])',
-      [idsToDelete]
-    );
-    
-    if (verifyResult.rows.length !== idsToDelete.length) {
-      console.error('Some IDs to delete were not found in the database');
-      throw new Error(`Could not find all IDs to delete. Found: ${verifyResult.rows.length}, Expected: ${idsToDelete.length}`);
-    }
-
-    const deleteResult = await client.query(
-      'DELETE FROM leads WHERE id = ANY($1::uuid[]) RETURNING *',
-      [idsToDelete]
-    );
-
-    console.log(`Deleted ${deleteResult.rowCount} rows`);
-    
-    // Verify deletion by checking if any of the IDs still exist
-    const checkResult = await client.query(
-      'SELECT id FROM leads WHERE id = ANY($1::uuid[])',
-      [idsToDelete]
-    );
-    
-    if (checkResult.rows.length > 0) {
-      console.error('Some rows were not deleted:', checkResult.rows);
-      throw new Error(`Failed to delete all rows. ${checkResult.rows.length} rows still exist`);
-    }
-
-    // Log the deletion
-    await client.query(
-      'INSERT INTO logs (action, entity, entity_id, details, created_by) VALUES ($1, $2, $3, $4, $5)',
-      ['delete_duplicates', 'lead', null, `Removed ${deleteResult.rowCount} duplicate leads. Kept oldest records based on creation date.`, req.user.id]
-    );
-
-    // Verify the log was created
-    const logResult = await client.query(
-      'SELECT id FROM logs WHERE action = $1 AND created_by = $2 ORDER BY created_at DESC LIMIT 1',
-      ['delete_duplicates', req.user.id]
-    );
-    
-    if (logResult.rows.length === 0) {
-      console.error('Failed to create log entry');
-      throw new Error('Failed to create log entry for duplicate removal');
-    }
-
-    await client.query('COMMIT');
-    console.log('Transaction committed successfully');
-
-    res.json({
-      message: `Successfully removed ${deleteResult.rowCount} duplicate leads`,
-      removed: deleteResult.rowCount,
-      success: true,
-      details: {
-        duplicatesFound: duplicatesResult.rows.length,
-        duplicatesRemoved: deleteResult.rowCount,
-        removedIds: idsToDelete,
-        logEntryCreated: true
-      }
-    });
-  } catch (error) {
-    console.error('Duplicate removal failed:', error);
-    
-    // Rollback transaction if client exists
-    if (client) {
-      try {
-        await client.query('ROLLBACK');
-        console.log('Transaction rolled back');
-      } catch (rollbackError) {
-        console.error('Rollback failed:', rollbackError);
-      }
-    }
-    
-    res.status(500).json({
-      success: false,
-      message: 'Failed to remove duplicates',
-      error: {
-        name: error.name,
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-        pgError: error.code ? {
-          code: error.code,
-          detail: error.detail,
-          hint: error.hint
-        } : undefined
-      }
-    });
-  } finally {
-    if (client) {
-      client.release();
-      console.log('Database connection released');
-    }
   }
 });
 
@@ -1374,6 +1523,17 @@ app.get('/api/leads/country-distribution', authenticateToken, async (req, res) =
       message: 'Failed to fetch country distribution',
       error: err.message 
     });
+  }
+});
+
+// Clear all logs
+app.delete('/api/logs', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM logs');
+    res.json({ message: 'All logs cleared successfully' });
+  } catch (err) {
+    console.error('Error clearing logs:', err);
+    res.status(500).json({ message: 'Failed to clear logs' });
   }
 });
 

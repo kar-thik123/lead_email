@@ -79,7 +79,7 @@
     </div>
     
     <div class="row">
-      <div class="col-md-6 mb-4 mb-md-0">
+      <div class="col-md-12">
         <div class="card dashboard-card h-100">
           <div class="dashboard-card-header">
             <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Leads by Source</h5>
@@ -89,23 +89,6 @@
               <canvas baseChart 
                 [type]="doughnutChartType"
                 [data]="leadsBySourceChartData"
-                [options]="chartOptions">
-              </canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="col-md-6">
-        <div class="card dashboard-card h-100">
-          <div class="dashboard-card-header">
-            <h5 class="mb-0"><i class="bi bi-globe"></i> Leads by Country</h5>
-          </div>
-          <div class="dashboard-card-body">
-            <div class="chart-container" style="height: 300px;">
-              <canvas baseChart 
-                [type]="doughnutChartType"
-                [data]="leadsByCountryChartData"
                 [options]="chartOptions">
               </canvas>
             </div>

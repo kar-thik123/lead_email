@@ -1,5 +1,5 @@
 <app-layout>
-  <div class="content fade-in">
+  <div class="content fade-in" style="margin-top: -50px;">
     <div *ngIf="showTable">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="mb-0 section-title">
@@ -35,12 +35,8 @@
         <button *ngIf="isEditMode" class="btn btn-save me-2" (click)="saveAllChanges()">
           <i class="bi bi-save"></i> Save All Changes
         </button>
-        <button class="btn btn-filter me-2" (click)="toggleFilters()">
-          <i class="bi bi-funnel"></i> Advanced Filters
-        </button>
-        <button *ngIf="duplicateCount > 0" class="btn btn-duplicate me-2" (click)="removeDuplicates()">
-          <i class="bi bi-exclamation-triangle"></i> Remove Duplicates ({{ duplicateCount }})
-        </button>
+        
+       
         <button class="btn btn-add-contact me-2" (click)="toggleAddContactForm()">
           <i class="bi bi-person-plus"></i> Add Contact
         </button>
@@ -50,8 +46,14 @@
         <button *ngIf="isDeleteMode" class="btn btn-danger me-2" (click)="deleteSelectedRows()">
           <i class="bi bi-trash-fill"></i> Delete Selected ({{selectedRows.size}})
         </button>
+        <button class="btn btn-danger me-2" (click)="clearAllLeads()">
+          <i class="bi bi-trash-fill"></i> Clear All Leads
+        </button>
+        <button class="btn btn-primary me-2" (click)="scanForDuplicates()" [disabled]="isLoading">
+          <i class="bi bi-search"></i> Scan for Duplicates
+        </button>
       </div>
-
+     
       <div *ngIf="isLoading" class="loading-overlay">
         <div class="spinner-border text-primary" role="status"></div>
       </div>
@@ -65,13 +67,11 @@
                       [checked]="selectedRows.size === paginatedRows.length"
                       (change)="toggleAllRows($event)">
               </th>
-              <th *ngFor="let column of columns" style="position: relative;">
-                <i [class]="column.icon"></i> {{ column.label }}
-                <i *ngIf="showAllFilters" class="bi bi-funnel ms-2" style="cursor:pointer;"
-                  (click)="toggleColumnFilter(column.key)"></i>
-                <div *ngIf="activeFilterColumn === column.key" class="filter-dropdown">
-                  <input type="text" class="form-control" [(ngModel)]="filterValues[column.key]"
-                        (input)="applyFilters()" [placeholder]="'Filter ' + column.label" />
+              <th *ngFor="let column of columns">
+                <div class="column-header">
+                  <div class="column-title">
+                    <i [class]="column.icon"></i> {{ column.label }}
+                  </div>
                 </div>
               </th>
             </tr>
@@ -87,7 +87,7 @@
                           (click)="toggleRowSelection($event, row)"
                           class="me-2">
                     <button class="toggle-button" (click)="toggleRow(row)">
-                      {{ row.expanded ? '−' : '+' }}
+                      {{ row.expanded ? '➖' : '➕' }}
                     </button>
                   </div>
                 </td>
@@ -95,63 +95,113 @@
                   <ng-container *ngIf="isEditMode && column.editable; else displayMode">
                     <input *ngIf="column.type === 'text'" 
                           type="text" 
-                          class="form-control" 
+                          class="form-control edit-input" 
                           [(ngModel)]="row[column.key]"
                           (ngModelChange)="onFieldEdit(row, column.key, $event)" />
                     <input *ngIf="column.type === 'link'" 
                           type="text" 
-                          class="form-control" 
+                          class="form-control edit-input" 
                           [(ngModel)]="row[column.key]"
                           (ngModelChange)="onFieldEdit(row, column.key, $event)" />
+                    <select *ngIf="column.type === 'select'"
+                          class="form-select"
+                          [(ngModel)]="row[column.key]"
+                          (ngModelChange)="onStatusChange(row, $event)">
+                      <option *ngFor="let option of statusOptions" [value]="option.value">
+                        {{ option.label }}
+                      </option>
+                    </select>
                   </ng-container>
                   <ng-template #displayMode>
-                    <span *ngIf="column.type === 'link' && row[column.key]; else plainText">
-                      <a [href]="row[column.key]" target="_blank">{{ row[column.key] }}</a>
+                    <span *ngIf="column.key === 'email_id_1' && row[column.key]" 
+                          class="clickable-link" 
+                          (click)="handleEmailClick(row[column.key] || '')">
+                      <i class="bi bi-envelope"></i> {{ row[column.key] }}
                     </span>
-                    <ng-template #plainText>
+                    <span *ngIf="column.key === 'phone_no_1' && row[column.key]" 
+                          class="clickable-link" 
+                          (click)="handlePhoneClick(row[column.key] || '')">
+                      <i class="bi bi-telephone"></i> {{ row[column.key] }}
+                    </span>
+                    <span *ngIf="column.key === 'website' && row[column.key]" 
+                          class="clickable-link" 
+                          (click)="handleWebsiteClick(row[column.key] || '')">
+                      <i class="bi bi-globe"></i> {{ row[column.key] }}
+                    </span>
+                    <span *ngIf="column.key === 'status'" class="status-badge" [class]="'status-' + (row[column.key]?.toLowerCase() || 'new')">
+                      {{ row[column.key] || 'New' }}
+                    </span>
+                    <span *ngIf="!['email_id_1', 'phone_no_1', 'website', 'status'].includes(column.key)">
                       {{ column.key === 'created_at' ? (row[column.key] | date:'medium') : (row[column.key] || '-') }}
-                    </ng-template>
+                    </span>
                   </ng-template>
                 </td>
               </tr>
 
               <tr *ngIf="row.expanded">
-                <td colspan="11">
+                <td colspan="10">
                   <div class="row details-row">
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                       <label><i class="bi bi-telephone-outbound"></i> Phone No. 2</label>
-                      <input type="text" class="form-control detail-input" [(ngModel)]="row.phone_no_2"
-                            (ngModelChange)="onFieldEdit(row, 'phone_no_2', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="text" class="form-control detail-input" [(ngModel)]="row.phone_no_2"
+                              (ngModelChange)="onFieldEdit(row, 'phone_no_2', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.phone_no_2 || '-' }}</span>
+                      </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                       <label><i class="bi bi-envelope-at"></i> Email ID 2</label>
-                      <input type="email" class="form-control detail-input" [(ngModel)]="row.email_id_2"
-                            (ngModelChange)="onFieldEdit(row, 'email_id_2', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="email" class="form-control detail-input" [(ngModel)]="row.email_id_2"
+                              (ngModelChange)="onFieldEdit(row, 'email_id_2', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.email_id_2 || '-' }}</span>
+                      </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                       <label><i class="bi bi-envelope-at-fill"></i> Email ID 3</label>
-                      <input type="email" class="form-control detail-input" [(ngModel)]="row.email_id_3"
-                            (ngModelChange)="onFieldEdit(row, 'email_id_3', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="email" class="form-control detail-input" [(ngModel)]="row.email_id_3"
+                              (ngModelChange)="onFieldEdit(row, 'email_id_3', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.email_id_3 || '-' }}</span>
+                      </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                       <label><i class="bi bi-person"></i> Last Name</label>
-                      <input type="text" class="form-control detail-input" [(ngModel)]="row.last_name"
-                            (ngModelChange)="onFieldEdit(row, 'last_name', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="text" class="form-control detail-input" [(ngModel)]="row.last_name"
+                              (ngModelChange)="onFieldEdit(row, 'last_name', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.last_name || '-' }}</span>
+                      </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                       <label><i class="bi bi-geo-alt"></i> Address</label>
-                      <input type="text" class="form-control detail-input" [(ngModel)]="row.address"
-                            (ngModelChange)="onFieldEdit(row, 'address', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="text" class="form-control detail-input" [(ngModel)]="row.address"
+                              (ngModelChange)="onFieldEdit(row, 'address', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.address || '-' }}</span>
+                      </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                       <label><i class="bi bi-building"></i> City</label>
-                      <input type="text" class="form-control detail-input" [(ngModel)]="row.city"
-                            (ngModelChange)="onFieldEdit(row, 'city', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="text" class="form-control detail-input" [(ngModel)]="row.city"
+                              (ngModelChange)="onFieldEdit(row, 'city', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.city || '-' }}</span>
+                      </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                       <label><i class="bi bi-globe-americas"></i> Country</label>
-                      <input type="text" class="form-control detail-input" [(ngModel)]="row.country"
-                            (ngModelChange)="onFieldEdit(row, 'country', $event)" />
+                      <div class="form-control detail-input">
+                        <input *ngIf="isEditMode" type="text" class="form-control detail-input" [(ngModel)]="row.country"
+                              (ngModelChange)="onFieldEdit(row, 'country', $event)" />
+                        <span *ngIf="!isEditMode">{{ row.country || '-' }}</span>
+                      </div>
+                    </div>
+                    <div class="col-md-2">
+                      <label><i class="bi bi-calendar"></i> Created At</label>
+                      <div class="form-control detail-input">
+                        {{ row.created_at | date:'medium' }}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -182,7 +232,7 @@
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h5 class="modal-title"><i class="bi bi-person-plus"></i> Add New Contact</h5>
-        <button type="button" class="btn-close" (click)="toggleAddContactForm()"></button>
+        <button type="button" class="btn-close" (click)="toggleAddContactForm()">x</button>
       </div>
       <div class="modal-body">
         <form (ngSubmit)="addNewContact()" #contactForm="ngForm">
@@ -191,11 +241,11 @@
               <label><i class="bi bi-database"></i> Source</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['source']" name="source">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-person"></i> First Name <span class="required">*</span></label>
               <input type="text" class="form-control" [(ngModel)]="newContact['first_name']" name="first_name" required>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-person"></i> Last Name</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['last_name']" name="last_name">
             </div>
@@ -203,11 +253,11 @@
               <label><i class="bi bi-briefcase"></i> Designation</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['designation']" name="designation">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-telephone"></i> Phone Number 1 <span class="required">*</span></label>
               <input type="text" class="form-control" [(ngModel)]="newContact['phone_no_1']" name="phone_no_1" required>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-telephone"></i> Phone Number 2</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['phone_no_2']" name="phone_no_2">
             </div>
@@ -215,11 +265,11 @@
               <label><i class="bi bi-envelope"></i> Email 1 <span class="required">*</span></label>
               <input type="email" class="form-control" [(ngModel)]="newContact['email_id_1']" name="email_id_1" required>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-envelope"></i> Email 2</label>
               <input type="email" class="form-control" [(ngModel)]="newContact['email_id_2']" name="email_id_2">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-envelope"></i> Email 3</label>
               <input type="email" class="form-control" [(ngModel)]="newContact['email_id_3']" name="email_id_3">
             </div>
@@ -231,29 +281,27 @@
               <label><i class="bi bi-geo-alt"></i> Address</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['address']" name="address">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-building"></i> City</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['city']" name="city">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-3 mb-3">
               <label><i class="bi bi-globe-americas"></i> Country</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['country']" name="country">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label><i class="bi bi-info-circle"></i> Status</label>
-              <select class="form-select" [(ngModel)]="newContact['status']" name="status">
-                <option value="New">New</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Proposal">Proposal</option>
-                <option value="Closed">Closed</option>
+              <select class="form-select" [(ngModel)]="newContact['status']" name="status" required>
+                <option *ngFor="let option of statusOptions" [value]="option.value">
+                  {{ option.label }}
+                </option>
               </select>
             </div>
             <div class="col-md-6 mb-3">
               <label><i class="bi bi-chat-left-text"></i> Remarks</label>
               <input type="text" class="form-control" [(ngModel)]="newContact['remarks']" name="remarks">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label><i class="bi bi-calendar-check"></i> Follow Up</label>
               <input type="date" class="form-control" [(ngModel)]="newContact['follow_up']" name="follow_up">
             </div>
@@ -278,3 +326,11 @@
     (dismiss)="showAlert = false">
   </app-alert>
 </app-layout>
+
+<script>
+  statusOptions = [
+    { value: 'New', label: 'New' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Closed', label: 'Closed' }
+  ];
+</script>
