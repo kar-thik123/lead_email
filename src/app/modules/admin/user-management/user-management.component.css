@@ -1,0 +1,77 @@
+.user-management {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  color: var(--gray-300);
+  margin-bottom: 20px;
+}
+
+.empty-state p {
+  color: var(--gray-600);
+  font-size: 1.1rem;
+}
+
+.modal-sm {
+  max-width: 400px;
+}
+
+/* Add responsive adjustments for padding, margins, and font sizes */
+@media (max-width: 767.98px) {
+  .user-management {
+    padding: 10px; /* Reduced padding for the main container */
+  }
+
+  .section-title {
+    font-size: 1.8rem; /* Smaller title */
+    margin-bottom: 1rem; /* Reduced margin */
+  }
+
+  .section-description {
+    font-size: 0.9rem; /* Smaller description text */
+  }
+
+  .card-body {
+    padding: 15px; /* Reduced card body padding */
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 10px 8px; /* Reduced table cell padding */
+    font-size: 0.85rem; /* Smaller table text */
+  }
+
+  .form-control,
+  .form-select {
+    padding: 0.4rem 0.8rem; /* Smaller form control padding */
+    font-size: 0.9rem; /* Smaller form control text */
+  }
+
+  .btn {
+    padding: 0.4rem 0.8rem; /* Smaller button padding */
+    font-size: 0.9rem; /* Smaller button text */
+  }
+
+  .modal-content {
+    padding: 15px; /* Reduced modal padding */
+  }
+
+  .modal-sm {
+    max-width: 95%; /* Allow small modals to take more width on small screens */
+  }
+
+  /* Adjust spacing for button group in table */
+  .btn-group .btn {
+    margin-right: 5px !important; /* Reduce margin between buttons */
+  }
+
+  .btn-group .btn:last-child {
+    margin-right: 0 !important;
+  }
+}

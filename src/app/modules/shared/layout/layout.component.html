@@ -1,0 +1,95 @@
+<div class="app-container">
+  <!-- Sidebar -->
+  <div class="sidebar" [class.sidebar-collapsed]="sidebarCollapsed()">
+    <div class="sidebar-header">
+      <div class="logo" *ngIf="!sidebarCollapsed()">
+        <i class="bi bi-people-fill"></i> LEAD FollowUp
+      </div>
+      <div class="logo-icon" *ngIf="sidebarCollapsed()">
+        <i class="bi bi-people-fill"></i>
+      </div>
+    </div>
+    
+    <ul class="sidebar-nav">
+      <li class="sidebar-nav-item" [class.active]="isRouteActive('/dashboard')">
+        <a [routerLink]="['/dashboard']" class="sidebar-nav-link">
+          <i class="bi bi-speedometer2 sidebar-nav-icon"></i>
+          <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">Dashboard</span>
+        </a>
+      </li>
+      <li class="sidebar-nav-item" [class.active]="isRouteActive('/leads')">
+        <a [routerLink]="['/leads']" class="sidebar-nav-link">
+          <i class="bi bi-people sidebar-nav-icon"></i>
+          <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">Leads Management</span>
+        </a>
+      </li>
+      <li class="sidebar-nav-item" *ngIf="currentUser()?.role === 'admin'" [class.active]="isRouteActive('/admin')">
+        <a [routerLink]="['/admin']" class="sidebar-nav-link">
+          <i class="bi bi-shield-lock sidebar-nav-icon"></i>
+          <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">Admin Panel</span>
+        </a>
+      </li>
+      <li class="sidebar-nav-item" *ngIf="currentUser()?.role === 'admin'" [class.active]="isRouteActive('/admin/users')">
+        <a [routerLink]="['/admin/users']" class="sidebar-nav-link">
+          <i class="bi bi-person-gear sidebar-nav-icon"></i>
+          <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">User Management</span>
+        </a>
+      </li>
+      <li class="sidebar-nav-item" *ngIf="currentUser()?.role === 'admin'" [class.active]="isRouteActive('/admin/logs')">
+        <a [routerLink]="['/admin/logs']" class="sidebar-nav-link">
+          <i class="bi bi-journal-text sidebar-nav-icon"></i>
+          <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">System Logs</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="main-content" [class.main-content-expanded]="sidebarCollapsed()">
+    <!-- Top Navbar -->
+    <div class="top-navbar">
+      <div class="d-flex align-items-center">
+        <button class="toggle-sidebar-btn" (click)="toggleSidebar()">
+          <i class="bi" [class.bi-list]="sidebarCollapsed()" [class.bi-x]="!sidebarCollapsed()"></i>
+        </button>
+        <h4 class="mb-0 ms-3 d-none d-sm-block">
+          <ng-container *ngIf="isRouteActive('/dashboard')">Dashboard</ng-container>
+          <ng-container *ngIf="isRouteActive('/leads')">Leads Management</ng-container>
+          <ng-container *ngIf="isRouteActive('/admin')">Admin Panel</ng-container>
+          <ng-container *ngIf="isRouteActive('/admin/users')">User Management</ng-container>
+          <ng-container *ngIf="isRouteActive('/admin/logs')">System Logs</ng-container>
+        </h4>
+      </div>
+      
+      <div class="user-dropdown">
+        <button class="user-dropdown-toggle" (click)="toggleUserDropdown()">
+          <i class="bi bi-person-circle me-2"></i>
+          <span class="d-none d-md-inline">{{ currentUser()?.first_name || currentUser()?.username }}</span>
+          <i class="bi bi-caret-down-fill ms-1"></i>
+        </button>
+        
+        <div class="user-dropdown-menu" *ngIf="userDropdownOpen()">
+          <a class="user-dropdown-item">
+            <i class="bi bi-person me-2"></i>
+            Profile
+          </a>
+          <a class="user-dropdown-item">
+            <i class="bi bi-gear me-2"></i>
+            Settings
+          </a>
+          <div class="dropdown-divider"></div>
+          <a class="user-dropdown-item" (click)="logout()">
+            <i class="bi bi-box-arrow-right me-2"></i>
+            Sign Out
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Page Content -->
+    <div class="page-content">
+      <ng-content></ng-content>
+    </div>
+  </div>
+  
+</div>

@@ -1,0 +1,142 @@
+.admin-dashboard {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.section-title {
+  color: var(--primary);
+  margin-bottom: 5px;
+}
+
+.section-description {
+  color: var(--gray-600);
+  font-size: 1.1rem;
+}
+
+.admin-stat-card {
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.admin-stat-card .card-body {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+}
+
+.admin-stat-icon {
+  width: 60px;
+  height: 60px;
+  background-color: rgba(52, 152, 219, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 1.8rem;
+  color: rgba(52, 152, 219, 1);
+  transition: all 0.3s ease;
+}
+
+.admin-stat-icon-active {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: rgba(46, 204, 113, 1);
+}
+
+.admin-stat-icon-inactive {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: rgba(231, 76, 60, 1);
+}
+
+.admin-stat-icon-logs {
+  background-color: rgba(155, 89, 182, 0.2);
+  color: rgba(155, 89, 182, 1);
+}
+
+.admin-stat-card:hover .admin-stat-icon {
+  transform: scale(1.1);
+}
+
+.admin-stat-info {
+  flex-grow: 1;
+}
+
+.admin-stat-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 0;
+  color: var(--gray-800);
+}
+
+.admin-stat-label {
+  font-size: 1rem;
+  color: var(--gray-600);
+}
+
+.badge {
+  font-size: 0.8rem;
+  padding: 0.35em 0.65em;
+}
+
+/* Add responsive adjustments */
+@media (max-width: 767.98px) {
+  .admin-dashboard {
+    padding: 10px; /* Reduced padding for the main container */
+  }
+
+  .section-title {
+    font-size: 1.8rem; /* Smaller title */
+    margin-bottom: 1rem; /* Reduced margin */
+  }
+
+  .section-description {
+    font-size: 0.9rem; /* Smaller description text */
+  }
+
+  .card-body {
+    padding: 15px; /* Reduced card body padding */
+  }
+
+  .admin-stat-card .card-body {
+    padding: 15px; /* Reduced padding for stat cards */
+    flex-direction: column; /* Stack icon and info on small screens */
+    text-align: center;
+  }
+
+  .admin-stat-icon {
+    margin-right: 0; /* Remove right margin */
+    margin-bottom: 10px; /* Add bottom margin */
+    width: 50px; /* Smaller icon */
+    height: 50px; /* Smaller icon */
+    font-size: 1.5rem; /* Smaller icon size */
+  }
+
+  .admin-stat-value {
+    font-size: 1.5rem; /* Smaller stat value */
+  }
+
+  .admin-stat-label {
+    font-size: 0.9rem; /* Smaller stat label */
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 10px 8px; /* Reduced table cell padding */
+    font-size: 0.85rem; /* Smaller table text */
+  }
+
+  .btn {
+    padding: 0.4rem 0.8rem; /* Smaller button padding */
+    font-size: 0.9rem; /* Smaller button text */
+  }
+
+  /* Adjust spacing for buttons in the header */
+  .d-flex.justify-content-between.align-items-center.mb-4 > div:last-child .btn {
+    margin-left: 5px !important; /* Reduce left margin between buttons */
+    margin-right: 0 !important;
+  }
+}

@@ -1,0 +1,201 @@
+<app-layout>
+  <div class="dashboard">
+    <!-- Header Section -->
+   
+
+    <!-- Main Content -->
+    <div class="dashboard-content">
+      <!-- Metrics Column -->
+      <div class="metrics-column">
+        <div class="metrics-grid">
+          <div class="metric-card total">
+            <div class="metric-icon">
+              <i class="bi bi-people"></i>
+            </div>
+            <div class="metric-info">
+              <h3>Total Leads</h3>
+              <div class="metric-value">{{ leadStats?.total || 0 }}</div>
+              <div class="metric-period">All time</div>
+            </div>
+          </div>
+
+          <div class="metric-card new">
+            <div class="metric-icon">
+              <i class="bi bi-person-plus"></i>
+            </div>
+            <div class="metric-info">
+              <h3>New Leads</h3>
+              <div class="metric-value">{{ leadStats?.new || 0 }}</div>
+              <div class="metric-period">Last 30 days</div>
+            </div>
+          </div>
+
+          <div class="metric-card followed">
+            <div class="metric-icon">
+              <i class="bi bi-telephone"></i>
+            </div>
+            <div class="metric-info">
+              <h3>Followed Up</h3>
+              <div class="metric-value">{{ leadStats?.followed_up || 0 }}</div>
+              <div class="metric-period">Last 30 days</div>
+            </div>
+          </div>
+
+          <div class="metric-card converted">
+            <div class="metric-icon">
+              <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="metric-info">
+              <h3>Converted</h3>
+              <div class="metric-value">{{ leadStats?.converted || 0 }}</div>
+              <div class="metric-period">Last 30 days</div>
+            </div>
+          </div>
+
+          <!-- New Metrics -->
+          <!-- <div class="metric-card performance">
+            <div class="metric-icon">
+              <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <!-- <div class="metric-info">
+              <h3>Conversion Rate</h3>
+              <div class="metric-value">{{ conversionRate | number:'1.1-1' }}%</div>
+              <div class="metric-period">Overall</div>
+            </div>
+          </div> -->
+
+          <div class="metric-card response">
+            <div class="metric-icon">
+              <i class="bi bi-clock"></i>
+            </div>
+            <div class="metric-info">
+              <h3>Avg. Response Time</h3>
+              <div class="metric-value">{{ averageResponseTime }}h</div>
+              <div class="metric-period">Last 30 days</div>
+            </div>
+          </div>
+        </div>
+
+
+
+      </div>
+
+      <!-- Charts Column -->
+      <div class="charts-column" #chartsContainer>
+        <div class="charts-grid">
+          <!-- Leads by Status -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3><i class="bi bi-pie-chart"></i> Leads by Status</h3>
+              <div class="chart-actions">
+                <button class="btn-icon" (click)="refreshChart('status')">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div class="chart-container">
+                <canvas baseChart 
+                  [type]="doughnutChartType"
+                  [data]="leadsByStatusChartData"
+                  [options]="chartOptions">
+                </canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leads by Source -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3><i class="bi bi-funnel"></i> Leads by Source</h3>
+              <div class="chart-actions">
+                <button class="btn-icon" (click)="refreshChart('source')">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div class="chart-container">
+                <canvas baseChart 
+                  [type]="doughnutChartType"
+                  [data]="leadsBySourceChartData"
+                  [options]="chartOptions">
+                </canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leads by Country -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3><i class="bi bi-globe"></i> Leads by Country</h3>
+              <div class="chart-actions">
+                <button class="btn-icon" (click)="refreshChart('country')">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div class="chart-container">
+                <canvas baseChart 
+                  [type]="doughnutChartType"
+                  [data]="leadsByCountryChartData"
+                  [options]="chartOptions">
+                </canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conversion Rate Trend -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3><i class="bi bi-graph-up"></i> Conversion Rate Trend</h3>
+              <div class="chart-actions">
+                <button class="btn-icon" (click)="refreshChart('conversion')">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div class="chart-container">
+                <canvas baseChart 
+                  [type]="lineChartType"
+                  [data]="conversionRateChartData"
+                  [options]="lineChartOptions">
+                </canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lead Activity -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3><i class="bi bi-calendar-week"></i> Weekly Lead Activity</h3>
+              <div class="chart-actions">
+                <button class="btn-icon" (click)="refreshChart('activity')">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div class="chart-container">
+                <canvas baseChart 
+                  [type]="barChartType"
+                  [data]="leadActivityChartData"
+                  [options]="barChartOptions">
+                </canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" *ngIf="isLoading">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  </div>
+</app-layout>

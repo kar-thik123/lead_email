@@ -1,0 +1,140 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: var(--primary);
+  color: white;
+  transition: all 0.3s ease;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+}
+
+.sidebar-collapsed {
+  width: 60px;
+}
+.sidebar-nav-text{
+  font-size: 15px;
+  
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 190px;
+  min-height: 100vh;
+  width: calc(100vw - 190px);
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+.main-content-expanded {
+  margin-left: 60px;
+  width: calc(100vw - 60px);
+}
+
+.top-navbar {
+  background-color: white;
+  padding: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+.page-content {
+  padding: 1rem;
+  min-height: calc(100vh - 70px);
+  
+}
+
+.logo {
+  font-size: 1rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo i, .logo-icon i {
+  font-size: 1.8rem;
+  color: var(--secondary);
+  margin-right: 5px;
+}
+
+.logo-icon {
+  font-size: 1.8rem;
+  text-align: center;
+}
+
+/* Additional styles specifically for the layout component */
+.dropdown-divider {
+  height: 1px;
+  margin: 0.5rem 0;
+  overflow: hidden;
+  background-color: var(--gray-300);
+}
+.sidebar-nav-item{
+  margin-top: 1rem;
+}
+.user-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.user-dropdown-toggle:hover {
+  background-color: var(--gray-200);
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+  .sidebar {
+    width: 60px; /* Automatically collapse sidebar on small screens */
+  }
+
+  .main-content {
+    margin-left: 60px; /* Adjust margin for collapsed sidebar */
+    width: calc(100vw - 60px); /* Adjust width for collapsed sidebar */
+  }
+
+  .main-content-expanded {
+    margin-left: 60px; /* Keep adjusted margin even if expanded class is somehow present */
+    width: calc(100vw - 60px); /* Keep adjusted width */
+  }
+
+  /* Hide full text labels in sidebar when collapsed on small screens */
+  .sidebar-nav-text {
+    display: none !important;
+  }
+
+  /* Center icons when text is hidden */
+  .sidebar-nav-link {
+    justify-content: center;
+    padding: 1rem 0.5rem;
+  }
+
+  .logo {
+    display: none;
+  }
+
+  .logo-icon {
+    display: block;
+  }
+
+   .sidebar-header {
+    justify-content: center;
+   }
+}

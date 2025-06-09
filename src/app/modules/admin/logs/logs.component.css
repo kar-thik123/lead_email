@@ -1,0 +1,112 @@
+.logs-management {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  color: var(--gray-300);
+  margin-bottom: 20px;
+}
+
+.empty-state p {
+  color: var(--gray-600);
+  font-size: 1.1rem;
+}
+
+.modal-sm {
+  max-width: 400px;
+}
+
+/* Fix pagination for Angular */
+.pagination {
+  display: flex;
+  padding-left: 0;
+  list-style: none;
+}
+
+.page-item:first-child .page-link {
+  border-top-left-radius: 0.25rem;
+  border-bottom-left-radius: 0.25rem;
+}
+
+.page-item:last-child .page-link {
+  border-top-right-radius: 0.25rem;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.page-item.active .page-link {
+  z-index: 3;
+  color: #fff;
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.page-item.disabled .page-link {
+  color: var(--gray-500);
+  pointer-events: none;
+  background-color: #fff;
+  border-color: var(--gray-300);
+}
+
+.page-link {
+  position: relative;
+  display: block;
+  color: var(--primary);
+  text-decoration: none;
+  background-color: #fff;
+  border: 1px solid var(--gray-300);
+  padding: 0.5rem 0.75rem;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+/* Add responsive adjustments for padding, margins, and font sizes */
+@media (max-width: 767.98px) {
+  .logs-management {
+    padding: 10px; /* Reduced padding for the main container */
+  }
+
+  .section-title {
+    font-size: 1.8rem; /* Smaller title */
+    margin-bottom: 1rem; /* Reduced margin */
+  }
+
+  .section-description {
+    font-size: 0.9rem; /* Smaller description text */
+  }
+
+  .card-body {
+    padding: 15px; /* Reduced card body padding */
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 10px 8px; /* Reduced table cell padding */
+    font-size: 0.85rem; /* Smaller table text */
+  }
+
+  .form-select,
+  .form-control {
+    padding: 0.4rem 0.8rem; /* Smaller form control padding */
+    font-size: 0.9rem; /* Smaller form control text */
+  }
+
+  .btn {
+    padding: 0.4rem 0.8rem; /* Smaller button padding */
+    font-size: 0.9rem; /* Smaller button text */
+  }
+
+  .modal-content {
+    padding: 15px; /* Reduced modal padding */
+  }
+
+  /* Adjust filter row layout for small screens if needed */
+  .card-body .row {
+    gap: 10px; /* Add some gap between filter items when they stack */
+  }
+}
