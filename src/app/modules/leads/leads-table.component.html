@@ -196,47 +196,42 @@
                           class="form-control edit-input" 
                           [(ngModel)]="row[column.key]"
                           (ngModelChange)="onFieldEdit(row, column.key, $event)" />
+                    <input *ngIf="column.type === 'date'"
+                          type="date"
+                          class="form-control edit-input"
+                          [ngModel]="convertToDateInputFormat(row[column.key])"
+                          (ngModelChange)="onFieldEdit(row, column.key, $event)" />
                     <select *ngIf="column.type === 'select'"
                           class="form-select"
                           [(ngModel)]="row[column.key]"
-                          (ngModelChange)="onStatusChange(row, $event)">
+                          (ngModelChange)="onFieldEdit(row, column.key, $event)">
                       <option *ngFor="let option of statusOptions" [value]="option.value">
-                        {{ option.label }}
+                        {{option.label}}
                       </option>
                     </select>
                   </ng-container>
                   <ng-template #displayMode>
-                    <span *ngIf="column.key === 'email_id_1' && row[column.key]" 
-                          class="clickable-link" 
-                          (click)="handleEmailClick(row[column.key] || '')">
-                      <i class="bi bi-envelope"></i> {{ row[column.key] }}
-                    </span>
-                    <span *ngIf="column.key === 'phone_no_1' && row[column.key]" 
-                          class="clickable-link" 
-                          (click)="handlePhoneClick(row[column.key] || '')">
-                      <i class="bi bi-telephone"></i> {{ row[column.key] }}
-                    </span>
-                    <span *ngIf="column.key === 'website' && row[column.key]" 
-                          class="clickable-link" 
-                          (click)="handleWebsiteClick(row[column.key] || '')">
-                      <i class="bi bi-globe"></i> {{ row[column.key] }}
-                    </span>
-                    <ng-container *ngIf="column.key === 'status'">
-                      <select *ngIf="isEditMode" 
-                              class="form-select status-select" 
-                              [(ngModel)]="row[column.key]"
-                              (ngModelChange)="onStatusChange(row, $event)">
-                        <option *ngFor="let option of statusOptions" [value]="option.value">
-                          {{ option.label }}
-                        </option>
-                      </select>
-                      <span *ngIf="!isEditMode" class="status-badge" [class]="'status-' + (row[column.key]?.toLowerCase() || 'new')">
-                        {{ row[column.key] || 'New' }}
-                      </span>
+                    <ng-container *ngIf="column.type === 'link'">
+                      <a *ngIf="row[column.key]" [href]="row[column.key]" target="_blank" (click)="handleWebsiteClick(row[column.key])">
+                        {{row[column.key]}}
+                      </a>
+                      <span *ngIf="!row[column.key]">-</span>
                     </ng-container>
-                    <span *ngIf="!['email_id_1', 'phone_no_1', 'website', 'status'].includes(column.key)">
-                      {{ column.key === 'created_at' ? (row[column.key] | date:'medium') : (row[column.key] || '-') }}
-                    </span>
+                    <ng-container *ngIf="column.type === 'date'">
+                      {{formatDate(row[column.key])}}
+                    </ng-container>
+                    <ng-container *ngIf="column.type !== 'link' && column.type !== 'date'">
+                      <ng-container *ngIf="column.key === 'status'">
+                        <span class="badge" [ngClass]="{
+                          'bg-warning': row[column.key] === 'Pending',
+                          'bg-info': row[column.key] === 'New',
+                          'bg-success': row[column.key] === 'Closed'
+                        }">{{row[column.key] || '-'}}</span>
+                      </ng-container>
+                      <ng-container *ngIf="column.key !== 'status'">
+                        {{row[column.key] || '-'}}
+                      </ng-container>
+                    </ng-container>
                   </ng-template>
                 </td>
               </tr>

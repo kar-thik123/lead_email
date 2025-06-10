@@ -23,6 +23,7 @@
           <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">Leads Management</span>
         </a>
       </li>
+     
       <li class="sidebar-nav-item" *ngIf="currentUser()?.role === 'admin'" [class.active]="isRouteActive('/admin')">
         <a [routerLink]="['/admin']" class="sidebar-nav-link">
           <i class="bi bi-shield-lock sidebar-nav-icon"></i>
@@ -39,6 +40,12 @@
         <a [routerLink]="['/admin/logs']" class="sidebar-nav-link">
           <i class="bi bi-journal-text sidebar-nav-icon"></i>
           <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">System Logs</span>
+        </a>
+      </li>
+      <li class="sidebar-nav-item" [class.active]="isRouteActive('/tasks')">
+        <a [routerLink]="['/tasks']" class="sidebar-nav-link">
+          <i class="bi bi-list-check sidebar-nav-icon"></i>
+          <span class="sidebar-nav-text" [style.display]="sidebarCollapsed() ? 'none' : 'inline'">Task Management</span>
         </a>
       </li>
     </ul>
@@ -58,6 +65,7 @@
           <ng-container *ngIf="isRouteActive('/admin')">Admin Panel</ng-container>
           <ng-container *ngIf="isRouteActive('/admin/users')">User Management</ng-container>
           <ng-container *ngIf="isRouteActive('/admin/logs')">System Logs</ng-container>
+          <ng-container *ngIf="isRouteActive('/tasks')">Task Management</ng-container>
         </h4>
       </div>
       

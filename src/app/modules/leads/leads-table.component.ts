@@ -80,7 +80,7 @@ export class LeadsTableComponent implements OnInit {
     { key: 'website', label: 'Website', icon: 'bi bi-globe', editable: true, type: 'link' },
     { key: 'status', label: 'Status', icon: 'bi bi-info-circle', editable: true, type: 'select' },
     { key: 'remarks', label: 'Remarks', icon: 'bi bi-chat-left-text', editable: true, type: 'text' },
-    { key: 'follow_up', label: 'Follow Up', icon: 'bi bi-calendar-check', editable: true, type: 'text' }
+    { key: 'follow_up', label: 'Follow Up', icon: 'bi bi-calendar-check', editable: true, type: 'date' }
   ];
 
   editedFields: Map<string, Set<string>> = new Map();
@@ -377,10 +377,57 @@ export class LeadsTableComponent implements OnInit {
 
   onFieldEdit(row: Lead, fieldName: string, newValue: any): void {
     if (!this.editedFields.has(row.id)) {
-      this.editedFields.set(row.id, new Set<string>());
+      this.editedFields.set(row.id, new Set());
     }
     this.editedFields.get(row.id)?.add(fieldName);
-    row[fieldName as keyof Lead] = newValue;
+
+    // Handle date fields
+    if (fieldName === 'follow_up') {
+      if (newValue) {
+        const date = new Date(newValue);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        row[fieldName as keyof Lead] = `${day}/${month}/${year}`;
+      } else {
+        row[fieldName as keyof Lead] = undefined;
+      }
+    } else {
+      row[fieldName as keyof Lead] = newValue;
+    }
+  }
+
+  // Helper method to format date for display
+  formatDate(dateString: string | undefined): string {
+    if (!dateString) return '-';
+    try {
+      // If the date is already in dd/mm/yyyy format, return it
+      if (dateString.includes('/')) {
+        return dateString;
+      }
+      // If it's in ISO format, convert it
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
+  }
+
+  // Helper method to convert dd/mm/yyyy to yyyy-mm-dd for date input
+  convertToDateInputFormat(dateString: string | undefined): string | undefined {
+    if (!dateString) return undefined;
+    try {
+      const [day, month, year] = dateString.split('/');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return undefined;
+    }
   }
 
   saveAllChanges(): void {

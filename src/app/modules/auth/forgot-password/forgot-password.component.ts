@@ -26,27 +26,17 @@ export class ForgotPasswordComponent {
   requestReset(): void {
     this.isLoading = true;
     
-    // For demo, simulate success
-    setTimeout(() => {
-      this.isLoading = false;
-      this.requestSent = true;
-      this.showSuccessMessage(`Password reset link sent to ${this.resetRequest.email}. Please check your email.`);
-    }, 1500);
-    
-    // In a real app, use this:
-    /*
     this.authService.requestPasswordReset(this.resetRequest).subscribe({
       next: (response) => {
         this.isLoading = false;
         this.requestSent = true;
-        this.showSuccessMessage(response.message);
+        this.showSuccessMessage(response.message || 'Password reset link sent to your email. Please check your inbox.');
       },
       error: (error) => {
         this.isLoading = false;
-        this.showErrorMessage(error.message || 'Failed to send reset link. Please try again.');
+        this.showErrorMessage(error.error?.message || 'Failed to send reset link. Please try again.');
       }
     });
-    */
   }
 
   private showSuccessMessage(message: string): void {

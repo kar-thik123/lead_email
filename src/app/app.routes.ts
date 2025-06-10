@@ -23,6 +23,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'tasks',
+    loadComponent: () => import('./modules/task-management/task-management.component').then(m => m.TaskManagementComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'admin',
     loadChildren: () => import('./modules/admin/admin.routes').then(m => m.ADMIN_ROUTES),
     canActivate: [authGuard, adminGuard]

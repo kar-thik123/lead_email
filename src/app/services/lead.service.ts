@@ -5,12 +5,13 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { Lead, LeadFilterOptions, LeadStats, NewLead } from '../models/lead.model';
 import { LogService } from './log.service';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LeadService {
-  private readonly API_URL = 'http://localhost:3000/api'; // Replace with actual API URL
+  private readonly API_URL = environment.apiUrl;
   private readonly TIMEOUT = 30000; // 30 seconds timeout
 
   constructor(

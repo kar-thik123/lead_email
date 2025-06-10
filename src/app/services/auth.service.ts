@@ -1,36 +1,26 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
-import { User, UserCredentials, ResetPasswordRequest, ResetPasswordConfirm } from '../models/user.model';
-import { LogService } from './log.service';
+import { Observable, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { User, UserCredentials, ResetPasswordRequest } from '../models/user.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = 'http://localhost:3000/api'; // Replace with actual API URL
-  private readonly TOKEN_KEY = 'auth_token';
+  private readonly TOKEN_KEY = 'token';
   private readonly USER_KEY = 'current_user';
-  
+  private readonly API_URL = environment.apiUrl;
+
   currentUser = signal<User | null>(null);
   isLoggedIn = signal<boolean>(false);
 
   constructor(
     private http: HttpClient,
-    private router: Router,
-    private logService: LogService
+    private router: Router
   ) {
     this.checkAuthStatus();
-  }
-
-  getToken(): string | null {
-    const token = localStorage.getItem(this.TOKEN_KEY);
-    if (token) {
-      return token;
-    }
-    return null;
   }
 
   private checkAuthStatus(): void {
@@ -48,39 +38,23 @@ export class AuthService {
     }
   }
 
-  login(credentials: UserCredentials): Observable<{ token: string; user: User }> {
-    return this.http.post<{ token: string; user: User }>(`${this.API_URL}/login`, credentials).pipe(
-      tap(response => {
-        localStorage.setItem(this.TOKEN_KEY, response.token);
-        localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
-        this.currentUser.set(response.user);
-        this.isLoggedIn.set(true);
-        this.logService.addLog({
-          action: 'login',
-          entity: 'auth',
-          entity_id: response.user.id,
-          details: `User logged in: ${response.user.username}`
-        });
-      }),
-      catchError(error => {
-        console.error('Login error:', error);
-        return throwError(() => new Error(error.error?.message || 'Invalid credentials. Please try again.'));
-      })
-    );
+  login(credentials: UserCredentials): Observable<any> {
+    return this.http.post(`${this.API_URL}/login`, credentials)
+      .pipe(
+        tap((response: any) => {
+          if (response.token) {
+            localStorage.setItem(this.TOKEN_KEY, response.token);
+            if (response.user) {
+              localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+              this.currentUser.set(response.user);
+              this.isLoggedIn.set(true);
+            }
+          }
+        })
+      );
   }
 
   logout(): void {
-    // Log the logout action before clearing user data
-    const user = this.currentUser();
-    if (user) {
-      this.logService.addLog({
-        action: 'logout',
-        entity: 'auth',
-        entity_id: user.id,
-        details: `User logged out: ${user.username}`
-      }).subscribe();
-    }
-
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.currentUser.set(null);
@@ -88,29 +62,26 @@ export class AuthService {
     this.router.navigate(['/auth/login']);
   }
 
-  requestPasswordReset(request: ResetPasswordRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.API_URL}/auth/reset-password`, request).pipe(
-      catchError(error => {
-        console.error('Password reset request error:', error);
-        return throwError(() => new Error(error.error?.message || 'Failed to process password reset request. Please try again.'));
-      })
-    );
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem(this.TOKEN_KEY);
   }
 
-  confirmPasswordReset(data: ResetPasswordConfirm): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.API_URL}/auth/reset-password/confirm`, data).pipe(
-      catchError(error => {
-        console.error('Password reset confirmation error:', error);
-        return throwError(() => new Error(error.error?.message || 'Failed to reset password. Please try again.'));
-      })
-    );
+  getToken(): string | null {
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
   isAdmin(): boolean {
     return this.currentUser()?.role === 'admin';
   }
 
-  getAuthToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+  requestPasswordReset(request: ResetPasswordRequest): Observable<any> {
+    return this.http.post(`${this.API_URL}/auth/forgot-password`, request);
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/auth/reset-password`, {
+      token,
+      newPassword
+    });
   }
 }

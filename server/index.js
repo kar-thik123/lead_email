@@ -7,18 +7,18 @@ const saltRounds = 10; // Recommended salt rounds for bcrypt
 const multer = require('multer');
 const xlsx = require('xlsx');
 const path = require('path');
+const jwtService = require('./jwt.service');
+const emailService = require('./email.service');
+const nodemailer = require('nodemailer');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
-
-// Import jwtService after environment variables are loaded
-const jwtService = require('./jwt.service');
 
 const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:4200', // Angular default port
+  origin: ['http://25.5.93.125:4200'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -37,6 +37,9 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
 });
 
+// Export pool for use in routes
+module.exports.pool = pool;
+
 // Test DB connection
 pool.connect()
   .then(client => {
@@ -47,6 +50,34 @@ pool.connect()
     console.error('❌ PostgreSQL connection failed:', err.message);
     process.exit(1);
   });
+
+// Import routes
+const taskRoutes = require('./routes/tasks');
+
+// Use routes
+app.use('/api/tasks', taskRoutes);
+
+// Middleware: JWT Authentication
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'No token provided' });
+
+  try {
+    const user = jwtService.verifyToken(token);
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(403).json({ message: 'Invalid token' });
+  }
+};
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+      user: 'dtactics.dt@gmail.com',
+      pass: process.env.EMAIL_PASSWORD // Use app-specific password for Gmail
+  }
+});
 
 // Test endpoint to verify database connection
 app.get('/api/test-db', async (req, res) => {
@@ -63,20 +94,23 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// Middleware: JWT Authentication
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'No token provided' });
-
+// Test endpoint to verify tasks table
+app.get('/api/test-tasks', async (req, res) => {
   try {
-    const user = jwtService.verifyToken(token);
-    req.user = user;
-    next();
+    const result = await pool.query('SELECT COUNT(*) FROM tasks');
+    console.log('Tasks table query successful:', result.rows[0]);
+    res.json({ 
+      message: 'Tasks table is accessible',
+      count: result.rows[0].count
+    });
   } catch (err) {
-    return res.status(403).json({ message: 'Invalid token' });
+    console.error('Tasks table test failed:', err);
+    res.status(500).json({ 
+      message: 'Tasks table query failed',
+      error: err.message 
+    });
   }
-};
+});
 
 // Debug: List all users
 app.get('/api/debug/users', async (req, res) => {
@@ -1844,11 +1878,118 @@ app.get('/api/logs/export', authenticateToken, async (req, res) => {
   }
 });
 
+// Password Reset Request
+app.post('/api/auth/forgot-password', async (req, res) => {
+    console.log('=== Forgot Password Request Start ===');
+    console.log('Request body:', req.body);
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            console.log('Email missing in request');
+            return res.status(400).json({
+                message: 'Email is required',
+                success: false
+            });
+        }
+
+        console.log('Checking if user exists for email:', email);
+        // Check if user exists
+        const result = await pool.query(
+            'SELECT * FROM users WHERE email = $1',
+            [email]
+        );
+
+        const user = result.rows[0];
+
+        if (!user) {
+            console.log('No user found for email:', email);
+            return res.status(404).json({
+                message: 'No account found with this email',
+                success: false
+            });
+        }
+
+        console.log('User found, generating reset token');
+        // Generate reset token
+        const resetToken = jwtService.generateToken(
+            { id: user.id, email: user.email },
+            '1h' // Token expires in 1 hour
+        );
+
+        console.log('Attempting to send reset email');
+        // Send reset email
+        await emailService.sendPasswordResetEmail(email, resetToken);
+
+        console.log('Reset email sent successfully');
+        res.json({
+            message: 'Password reset instructions sent to your email',
+            success: true
+        });
+    } catch (error) {
+        console.error('=== Forgot Password Error ===');
+        console.error('Error type:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({
+            message: 'Failed to process password reset request',
+            success: false
+        });
+    }
+    console.log('=== Forgot Password Request End ===');
+});
+
+// Reset Password
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        if (!token || !newPassword) {
+            return res.status(400).json({
+                message: 'Token and new password are required',
+                success: false
+            });
+        }
+
+        // Verify token
+        const decoded = jwtService.verifyToken(token);
+        if (!decoded) {
+            return res.status(401).json({
+                message: 'Invalid or expired token',
+                success: false
+            });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update password
+        await pool.query(
+            'UPDATE users SET password = $1 WHERE id = $2',
+            [hashedPassword, decoded.id]
+        );
+
+        res.json({
+            message: 'Password has been reset successfully',
+            success: true
+        });
+    } catch (error) {
+        console.error('Password reset error:', error);
+        res.status(500).json({
+            message: 'Failed to reset password',
+            success: false
+        });
+    }
+});
+
 // ================== Start Server ==================
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const HOST = '25.5.93.125'; // Your Hamachi IPv4
+
+app.listen(PORT, HOST, () => {
+  console.log(`Server running at http://${HOST}:${PORT}`);
 });
 
 // Error handling middleware

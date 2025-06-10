@@ -3,12 +3,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Log, LogFilterOptions, LogStats, LogCreation } from '../models/log.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LogService {
-  private readonly API_URL = 'http://localhost:3000/api'; // Replace with actual API URL
+  private readonly API_URL = environment.apiUrl;
   
   constructor(
     private http: HttpClient,

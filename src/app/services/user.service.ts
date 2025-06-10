@@ -5,12 +5,13 @@ import { catchError, tap } from 'rxjs/operators';
 import { User, NewUser } from '../models/user.model';
 import { LogService } from './log.service';
 import { throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
-  private readonly API_URL = 'http://localhost:3000/api'; // Replace with actual API URL
+  private readonly API_URL = environment.apiUrl;
   
   constructor(
     private http: HttpClient,

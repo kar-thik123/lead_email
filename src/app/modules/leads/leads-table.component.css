@@ -397,7 +397,7 @@
 
 /* Import Button */
 .btn-import {
-  background: linear-gradient(45deg, #00410e, #80c509, #363d26);
+  background: linear-gradient(45deg, #989d93, #80c509, #363d26);
   color: white;
 }
 
@@ -1086,4 +1086,30 @@
   .table th:nth-child(9), .table td:nth-child(9) { width: 115px; }
   .table th:nth-child(10), .table td:nth-child(10) { width: 65px; }
   .table th:nth-child(11), .table td:nth-child(11) { width: 75px; }
+}
+
+/* Status badge styles */
+.badge {
+  padding: 6px 12px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.bg-warning {
+  background-color: #e7b215 !important;
+  color: #000;
+}
+
+.bg-info {
+  background-color: #17a2b8 !important;
+  color: #fff;
+}
+
+.bg-success {
+  background-color: #28a745 !important;
+  color: #fff;
 }
